@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { validateChapterStructure } from "@/lib/schemas/chapter-schema"
 
 export const dynamic = "force-dynamic"
@@ -27,15 +26,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create Supabase client
-    const cookieStore = await cookies()
-    const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
-        },
-      },
-    })
+    const supabase = createAdminClient()
 
     // First, ensure theme exists
     const { data: existingTheme, error: themeError } = await supabase
@@ -132,14 +123,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const theme = searchParams.get("theme")
 
-    const cookieStore = await cookies()
-    const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
-        },
-      },
-    })
+    const supabase = createAdminClient()
 
     let query = supabase
       .from("story_chapters")
