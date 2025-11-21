@@ -17,6 +17,7 @@ import { JsonImport } from "./json-import"
 import { EventContestManager } from "./event-contest-manager"
 import { StatsValidator } from "./stats-validator"
 import { MiniAppTester } from "./miniapp-tester"
+import { RankDebugger } from "./rank-debugger"
 import {
   Activity,
   Database,
@@ -31,6 +32,7 @@ import {
   Trophy,
   CheckCircle2,
   Smartphone,
+  Target,
 } from "lucide-react"
 
 export function DebugDashboard() {
@@ -76,7 +78,7 @@ export function DebugDashboard() {
 
       {/* Main Dashboard Tabs */}
       <Tabs defaultValue="stats" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-12">
+        <TabsList className="grid w-full grid-cols-13">
           <TabsTrigger value="stats" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
             Statistics
@@ -96,6 +98,10 @@ export function DebugDashboard() {
           <TabsTrigger value="miniapp" className="flex items-center gap-2">
             <Smartphone className="h-4 w-4" />
             Mini App
+          </TabsTrigger>
+          <TabsTrigger value="rank" className="flex items-center gap-2">
+            <Target className="h-4 w-4" />
+            Rank Debug
           </TabsTrigger>
           <TabsTrigger value="webhook" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
@@ -145,6 +151,10 @@ export function DebugDashboard() {
 
         <TabsContent value="miniapp" className="space-y-4">
           <MiniAppTester />
+        </TabsContent>
+
+        <TabsContent value="rank" className="space-y-4">
+          <RankDebugger />
         </TabsContent>
 
         <TabsContent value="webhook" className="space-y-4">

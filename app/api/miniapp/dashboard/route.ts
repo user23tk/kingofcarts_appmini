@@ -89,7 +89,9 @@ export async function GET(request: NextRequest) {
       300,
     )
 
-    let rank = 1
+    let rank = 0
+    let totalPlayers = 0
+
     try {
       const { data: rankData, error: rankError } = await supabase.rpc("get_user_rank", {
         p_user_id: userId,
@@ -97,15 +99,19 @@ export async function GET(request: NextRequest) {
 
       if (rankError) {
         console.error("[v0] Rank calculation error:", rankError)
+        // rank remains 0 - correct for errors
       } else if (rankData && Array.isArray(rankData) && rankData.length > 0) {
-        rank = rankData[0].rank || 1
-        console.log("[v0] User rank:", rank, "out of", rankData[0].total_players)
-      } else if (rankData && typeof rankData === "object" && "rank" in rankData) {
-        rank = rankData.rank || 1
-        console.log("[v0] User rank:", rank)
+        const rankInfo = rankData[0]
+        rank = rankInfo.rank || 0
+        totalPlayers = rankInfo.total_players || 0
+        console.log("[v0] User rank:", rank, "out of", totalPlayers)
+      } else {
+        console.log("[v0] No rank data returned - user has no progress")
+        // rank remains 0 - correct for users without progress
       }
     } catch (rankErr) {
       console.error("[v0] Rank calculation failed:", rankErr)
+      // rank remains 0 - correct for network/database errors
     }
 
     const activeSession =

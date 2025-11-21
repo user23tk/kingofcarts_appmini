@@ -173,7 +173,7 @@ export default function MiniAppHome() {
           <div className="flex items-center justify-center gap-4 flex-wrap">
             <Badge variant="secondary" className="text-sm px-3 py-1">
               <Trophy className="w-3 h-3 mr-1" />
-              Rank #{dashboardData.user.rank}
+              {dashboardData.user.rank === 0 ? "Non classificato" : `Rank #${dashboardData.user.rank}`}
             </Badge>
             <Badge variant="secondary" className="text-sm px-3 py-1">
               <Sparkles className="w-3 h-3 mr-1" />
@@ -321,12 +321,16 @@ export default function MiniAppHome() {
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <Trophy className="h-5 w-5 text-accent" />
-                <Badge variant="secondary">#{dashboardData.user.rank}</Badge>
+                <Badge variant="secondary">
+                  {dashboardData.user.rank === 0 ? "N/A" : `#${dashboardData.user.rank}`}
+                </Badge>
               </div>
             </CardHeader>
             <CardContent>
               <p className="text-sm font-medium">Global Rank</p>
-              <p className="text-xs text-muted-foreground">Leaderboard</p>
+              <p className="text-xs text-muted-foreground">
+                {dashboardData.user.rank === 0 ? "Completa una storia" : "Leaderboard"}
+              </p>
             </CardContent>
           </Card>
 

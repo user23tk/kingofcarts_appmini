@@ -279,8 +279,7 @@ async function handleThemeSelection(callbackQuery: any, user: any) {
   const eventBadge = eventInfo ? `\n\n🎉 <b>EVENTO SPECIALE</b> - PP x${eventInfo.multiplier}! 🎉` : ""
 
   const selectionMessage = storyManager.formatStoryText(
-    `
-🎯 <b>Tema ${themeNames[theme as keyof typeof themeNames]} Selezionato!</b>
+    `🎯 <b>Tema ${themeNames[theme as keyof typeof themeNames]} Selezionato!</b>
 
 ${progressText}${eventBadge}
 
@@ -290,8 +289,9 @@ ${
   themeProgress.completed
     ? "Hai già completato questo tema, ma puoi sempre rivivere l'avventura!"
     : `Sei pronto per ${themeProgress.current_chapter === 1 ? "iniziare" : "continuare dal"} Capitolo ${themeProgress.current_chapter}?`
-} L'avventura ti aspetta! ✨
-  `,
+}
+
+L'avventura ti aspetta! ✨`,
     playerName,
   )
 
@@ -466,13 +466,11 @@ async function handleShowThemes(callbackQuery: any, user: any) {
   const activeEvent = activeEventData && activeEventData.length > 0 ? activeEventData[0] : null
 
   const welcomeMessage = storyManager.formatStoryText(
-    `
-🎭 <b>Scegli la Tua Avventura, {{PLAYER}}!</b>
+    `🎭 <b>Scegli la Tua Avventura, {{PLAYER}}!</b>
 
 {{KING}} ti aspetta in uno di questi regni magici:
 
-${activeEvent ? `🎉 <b>EVENTO SPECIALE ATTIVO: ${activeEvent.name || activeEvent.title}</b> ${activeEvent.event_emoji || "🎃"}\n\n` : ""}${Object.keys(allProgress).length > 0 ? "📊 <i>I tuoi progressi sono mostrati accanto a ogni tema</i>" : ""}
-  `,
+${activeEvent ? `🎉 <b>EVENTO SPECIALE ATTIVO: ${activeEvent.name || activeEvent.title}</b> ${activeEvent.event_emoji || "🎃"}\n\n` : ""}${Object.keys(allProgress).length > 0 ? "📊 <i>I tuoi progressi sono mostrati accanto a ogni tema</i>\n\n" : ""}Scegli il tuo destino! ⚔️`,
     playerName,
   )
 
@@ -555,8 +553,7 @@ async function handleStatsCommand(chatId: number, user: any) {
   const botName = process.env.BOT_DISPLAY_NAME || "King of Carts"
 
   const statsMessage = storyManager.formatStoryText(
-    `
-📊 <b>Statistiche di {{PLAYER}}</b>
+    `📊 <b>Statistiche di {{PLAYER}}</b>
 
 🎯 <b>I Tuoi Progressi:</b>
 • Capitoli completati: ${userStats.chaptersCompleted}
@@ -565,8 +562,7 @@ async function handleStatsCommand(chatId: number, user: any) {
 • Tema attuale: ${userStats.currentTheme || "Nessuno"}
 • Capitolo attuale: ${userStats.currentChapter}
 
-<i>"La saggezza cresce con ogni storia vissuta!" - {{KING}}</i> ✨
-  `,
+<i>"La saggezza cresce con ogni storia vissuta!"</i> - {{KING}} ✨`,
     playerName,
   )
 
