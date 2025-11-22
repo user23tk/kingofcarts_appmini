@@ -1,5 +1,8 @@
 -- Create all missing RPC functions for event system
 
+-- Drop deactivate_expired_events to allow return type change
+DROP FUNCTION IF EXISTS public.deactivate_expired_events();
+
 -- Function: deactivate_expired_events
 -- Automatically deactivates events that have passed their end date
 CREATE OR REPLACE FUNCTION deactivate_expired_events()

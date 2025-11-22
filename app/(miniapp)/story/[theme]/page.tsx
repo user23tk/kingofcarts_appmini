@@ -83,6 +83,11 @@ export default function StoryPage() {
 
       const data = await response.json()
 
+      if (data.waiting) {
+        setError(data.message)
+        return
+      }
+
       if (!data.scene || typeof data.scene.index !== "number" || !data.scene.text) {
         throw new Error("Invalid scene data received from server")
       }
