@@ -1,10 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createAdminClient } from "@/lib/supabase/admin"
+import { getAdminClient } from "@/lib/supabase/admin-singleton"
 import { requireDebugAuth } from "@/lib/security/debug-auth"
 
 export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
+  if (process.env.NODE_ENV === "production" && !process.env.ENABLE_DEBUG_ROUTES) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
+  }
+
   try {
     const authCheck = await requireDebugAuth(request)
     if (!authCheck.authorized) {
@@ -23,7 +27,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const supabase = createAdminClient()
+    const supabase = getAdminClient()
 
     if (action === "validate") {
       const issues: Array<{

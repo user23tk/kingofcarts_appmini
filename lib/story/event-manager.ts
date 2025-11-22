@@ -1,11 +1,11 @@
-import { createClient } from "@/lib/supabase/server"
+import { getAdminClient } from "@/lib/supabase/admin-singleton"
 
 export class EventManager {
   /**
    * Get the currently active event contest (with expiration check)
    */
   static async getActiveEvent() {
-    const supabase = await createClient()
+    const supabase = getAdminClient()
 
     await supabase.rpc("deactivate_expired_events")
 
@@ -25,7 +25,7 @@ export class EventManager {
    * Check if a theme is an event contest
    */
   static async isEventTheme(themeKey: string): Promise<boolean> {
-    const supabase = await createClient()
+    const supabase = getAdminClient()
 
     const { data, error } = await supabase
       .from("themes")
@@ -49,7 +49,7 @@ export class EventManager {
    * Get event leaderboard for a specific event
    */
   static async getEventLeaderboard(themeKey: string, limit = 100) {
-    const supabase = await createClient()
+    const supabase = getAdminClient()
     const { data, error } = await supabase.rpc("get_event_leaderboard", {
       p_theme: themeKey,
       p_limit: limit,
@@ -67,7 +67,7 @@ export class EventManager {
    * Get user's rank in event leaderboard
    */
   static async getUserEventRank(userId: string, themeKey: string) {
-    const supabase = await createClient()
+    const supabase = getAdminClient()
     const { data, error } = await supabase.rpc("get_user_event_rank", {
       p_user_id: userId,
       p_theme: themeKey,
@@ -85,7 +85,7 @@ export class EventManager {
    * Get PP multiplier for a theme (returns 1.0 if not an event)
    */
   static async getPPMultiplier(themeKey: string): Promise<number> {
-    const supabase = await createClient()
+    const supabase = getAdminClient()
     const { data: theme } = await supabase
       .from("themes")
       .select("pp_multiplier, is_event, is_active, event_end_date")
@@ -109,7 +109,7 @@ export class EventManager {
    * Simplified to use theme name directly instead of theme_id
    */
   static async updateEventLeaderboard(userId: string, themeKey: string, ppGained: number): Promise<void> {
-    const supabase = await createClient()
+    const supabase = getAdminClient()
 
     // Check if theme is an active event
     const isEvent = await this.isEventTheme(themeKey)

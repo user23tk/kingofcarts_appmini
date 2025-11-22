@@ -22,6 +22,16 @@ export interface LeaderboardStats {
   completionRate: number
 }
 
+export interface LeaderboardEntry {
+  rank: number
+  userId: string
+  firstName: string
+  chaptersCompleted: number
+  themesCompleted: number
+  totalScore: number
+  lastActive?: string
+}
+
 export class LeaderboardManager {
   /**
    * Get top N players from the leaderboard
@@ -143,5 +153,39 @@ export class LeaderboardManager {
         completionRate: 0,
       }
     }
+  }
+
+  /**
+   * Format leaderboard data for Telegram message
+   */
+  static formatLeaderboardMessage(
+    players: LeaderboardPlayer[],
+    userRank?: { rank: number; totalPlayers: number },
+  ): string {
+    if (players.length === 0) {
+      return "🏆 <b>Classifica King of Carts</b>\n\nNessun giocatore trovato. Sii il primo a completare una storia! ✨"
+    }
+
+    let message = "🏆 <b>Classifica King of Carts</b>\n\n"
+
+    // Add top players
+    players.slice(0, 10).forEach((player, index) => {
+      const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `${index + 1}.`
+      const name = player.firstName.length > 15 ? player.firstName.substring(0, 15) + "..." : player.firstName
+
+      message += `${medal} <b>${name}</b>\n`
+      message += `   📚 ${player.chaptersCompleted} capitoli • 🎭 ${player.themesCompleted} temi\n`
+      message += `   ⭐ ${player.totalScore} punti\n\n`
+    })
+
+    // Add user's rank if provided
+    if (userRank) {
+      message += `📊 <b>La Tua Posizione:</b> ${userRank.rank}/${userRank.totalPlayers}\n\n`
+    }
+
+    message += "<i>Punteggio = Capitoli×10 + Temi×100 + PP totali</i>\n"
+    message += "<i>Aggiornato ogni ora • Continua a giocare per scalare la classifica! 🌟</i>"
+
+    return message
   }
 }

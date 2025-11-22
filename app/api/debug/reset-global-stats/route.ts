@@ -1,9 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createAdminClient } from "@/lib/supabase/admin"
+import { getAdminClient } from "@/lib/supabase/admin-singleton"
 
 export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
+  if (process.env.NODE_ENV === "production" && !process.env.ENABLE_DEBUG_ROUTES) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
+  }
+
   try {
     const { adminKey } = await request.json()
 
@@ -11,7 +15,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const supabase = createAdminClient()
+    const supabase = getAdminClient()
 
     const { error: globalError } = await supabase
       .from("global_stats")
