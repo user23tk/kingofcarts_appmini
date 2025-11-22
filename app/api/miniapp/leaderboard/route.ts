@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { LeaderboardManager } from "@/lib/leaderboard/leaderboard-manager"
 import { MiniAppSecurity } from "@/lib/security/miniapp-security"
+import { createAdminClient } from "@/lib/supabase/admin-singleton" // Added Singleton import
 
 export const dynamic = "force-dynamic"
 
@@ -10,6 +11,8 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get("userId")
     const limit = Number.parseInt(searchParams.get("limit") || "100")
     const theme = searchParams.get("theme")
+
+    const supabase = createAdminClient()
 
     console.log("[v0] Leaderboard API called with userId:", userId)
 

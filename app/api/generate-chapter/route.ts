@@ -1,12 +1,30 @@
 import { streamText } from "ai"
 import { xai } from "@ai-sdk/xai"
 import type { NextRequest } from "next/server"
+import { RateLimit } from "@/lib/security/rate-limit" // Import RateLimit
 
 export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
   try {
-    const { theme, chapterNumber, existingChapters } = await request.json()
+    const { theme, chapterNumber, existingChapters, userId } = await request.json() // Extract userId from body
+
+    // Limit to 5 generations per minute per user to control AI costs
+    // Fallback to IP if userId is not provided (though it should be for authenticated users)
+    const identifier = userId || request.headers.get("x-forwarded-for") || "anonymous"
+    const rateLimit = await RateLimit.check(`generate_chapter:${identifier}`, { interval: 60, limit: 5 })
+
+    if (!rateLimit.success) {
+      return new Response(
+        JSON.stringify({
+          error: "Rate limit exceeded. Please wait a moment before generating more chapters.",
+        }),
+        {
+          status: 429,
+          headers: { "Content-Type": "application/json" },
+        },
+      )
+    }
 
     if (!theme) {
       return new Response("Theme is required", { status: 400 })

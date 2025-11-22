@@ -43,6 +43,10 @@ const nextConfig = {
             key: "Content-Security-Policy",
             value: "frame-ancestors 'self' https://*.telegram.org https://telegram.org https://web.telegram.org https://t.me",
           },
+          {
+            key: "X-Frame-Options",
+            value: "SAMEORIGIN",
+          },
         ],
       },
       {

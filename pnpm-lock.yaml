@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@ai-sdk/xai':
         specifier: latest
-        version: 2.0.34(zod@3.25.67)
+        version: 2.0.35(zod@3.25.67)
       '@emotion/is-prop-valid':
         specifier: latest
         version: 1.4.0
@@ -110,9 +110,12 @@ importers:
       '@vercel/analytics':
         specifier: latest
         version: 1.5.0(next@14.2.25(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)
+      '@vercel/kv':
+        specifier: latest
+        version: 3.0.0
       ai:
         specifier: latest
-        version: 5.0.98(zod@3.25.67)
+        version: 5.0.99(zod@3.25.67)
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.0)
@@ -138,7 +141,7 @@ importers:
         specifier: latest
         version: 12.23.24(@emotion/is-prop-valid@1.4.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       fs:
-        specifier: 0.0.1-security
+        specifier: latest
         version: 0.0.1-security
       geist:
         specifier: latest
@@ -159,7 +162,7 @@ importers:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       path:
-        specifier: 0.12.7
+        specifier: latest
         version: 0.12.7
       react:
         specifier: ^19
@@ -244,8 +247,8 @@ packages:
     resolution: {integrity: sha512-6o7Y2SeO9vFKB8lArHXehNuusnpddKPk7xqL7T2/b+OvXMRIXUO1rR4wcv1hAFUAT9avGZshty3Wlua/XA7TvA==}
     engines: {node: '>=18'}
 
-  '@ai-sdk/xai@2.0.34':
-    resolution: {integrity: sha512-Dm3z2QS097qayoEKgijBYeGaGVs1USKh0XAvU7msi366vK6BN2KKC9jo/x71yHPKjAP7bI/0ts7Ce10RwH2V5g==}
+  '@ai-sdk/xai@2.0.35':
+    resolution: {integrity: sha512-X6OIzeNNXBOQZQBa686lLt3FZ179VJYpEbZ1UH3EZBK5Fw6jGJhNke1RLToK1mwyPinOrU/oJAdZk4vyNFMHTw==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -1207,6 +1210,9 @@ packages:
   '@types/ws@8.18.1':
     resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
 
+  '@upstash/redis@1.35.6':
+    resolution: {integrity: sha512-aSEIGJgJ7XUfTYvhQcQbq835re7e/BXjs8Janq6Pvr6LlmTZnyqwT97RziZLO/8AVUL037RLXqqiQC6kCt+5pA==}
+
   '@vercel/analytics@1.5.0':
     resolution: {integrity: sha512-MYsBzfPki4gthY5HnYN7jgInhAZ7Ac1cYDoRWFomwGHWEX7odTEzbtg9kf/QSo7XEsEAqlQugA6gJ2WS2DEa3g==}
     peerDependencies:
@@ -1233,12 +1239,16 @@ packages:
       vue-router:
         optional: true
 
+  '@vercel/kv@3.0.0':
+    resolution: {integrity: sha512-pKT8fRnfyYk2MgvyB6fn6ipJPCdfZwiKDdw7vB+HL50rjboEBHDVBEcnwfkEpVSp2AjNtoaOUH7zG+bVC/rvSg==}
+    engines: {node: '>=14.6'}
+
   '@vercel/oidc@3.0.5':
     resolution: {integrity: sha512-fnYhv671l+eTTp48gB4zEsTW/YtRgRPnkI2nT7x6qw5rkI1Lq2hTmQIpHPgyThI0znLK+vX2n9XxKdXZ7BUbbw==}
     engines: {node: '>= 20'}
 
-  ai@5.0.98:
-    resolution: {integrity: sha512-RpMnwnml68Swblobvk6IdF7HLZrog72Ve6H5J3aN+A/JPg4y5CjCXeQyK1N4wJStyuTa6AoKYfJR5F4e/aVpHQ==}
+  ai@5.0.99:
+    resolution: {integrity: sha512-omnQLLi5yNQWLLJAaQdACsgBSj+c9LTCWwl9z+6albiqlATNF3AGdpr1ZMTJosGkupwswZc6LDIMa3cfHR4x/g==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -1807,6 +1817,9 @@ packages:
     engines: {node: '>=12.20'}
     hasBin: true
 
+  uncrypto@0.1.3:
+    resolution: {integrity: sha512-Ql87qFHB3s/De2ClA9e0gsnS6zXG27SkTiSJwjCc9MebbfapQfuPzumMIUMi38ezPZVNFcHI9sUIepeQfw8J8Q==}
+
   undici-types@6.11.1:
     resolution: {integrity: sha512-mIDEX2ek50x0OlRgxryxsenE5XaQD4on5U2inY7RApK3SOJpofyw7uW2AyfMKkhAxXIceo2DeWGVGwyvng1GNQ==}
 
@@ -1898,7 +1911,7 @@ snapshots:
     dependencies:
       json-schema: 0.4.0
 
-  '@ai-sdk/xai@2.0.34(zod@3.25.67)':
+  '@ai-sdk/xai@2.0.35(zod@3.25.67)':
     dependencies:
       '@ai-sdk/openai-compatible': 1.0.27(zod@3.25.67)
       '@ai-sdk/provider': 2.0.0
@@ -2862,14 +2875,22 @@ snapshots:
     dependencies:
       '@types/node': 22.0.0
 
+  '@upstash/redis@1.35.6':
+    dependencies:
+      uncrypto: 0.1.3
+
   '@vercel/analytics@1.5.0(next@14.2.25(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0))(react@19.0.0)':
     optionalDependencies:
       next: 14.2.25(@opentelemetry/api@1.9.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       react: 19.0.0
 
+  '@vercel/kv@3.0.0':
+    dependencies:
+      '@upstash/redis': 1.35.6
+
   '@vercel/oidc@3.0.5': {}
 
-  ai@5.0.98(zod@3.25.67):
+  ai@5.0.99(zod@3.25.67):
     dependencies:
       '@ai-sdk/gateway': 2.0.13(zod@3.25.67)
       '@ai-sdk/provider': 2.0.0
@@ -3370,6 +3391,8 @@ snapshots:
   tw-animate-css@1.3.3: {}
 
   typescript@5.0.2: {}
+
+  uncrypto@0.1.3: {}
 
   undici-types@6.11.1: {}
 

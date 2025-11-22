@@ -1,4 +1,4 @@
-import { createAdminClient } from "@/lib/supabase/admin"
+import { createAdminClient as createAdminClientInternal } from "@/lib/supabase/admin"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 let adminClientInstance: SupabaseClient | null = null
@@ -10,10 +10,13 @@ let adminClientInstance: SupabaseClient | null = null
 export function getAdminClient(): SupabaseClient {
   if (!adminClientInstance) {
     console.log("[v0] Creating new admin client singleton instance")
-    adminClientInstance = createAdminClient()
+    adminClientInstance = createAdminClientInternal()
   }
   return adminClientInstance
 }
+
+// This ensures all calls to createAdminClient() from this module actually get the singleton
+export const createAdminClient = getAdminClient
 
 /**
  * Reset the admin client instance (useful for testing)

@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useState, useMemo, type ReactNode } from "react"
 import { useTelegramWebApp } from "@/lib/telegram/webapp-client"
 
 interface User {
@@ -106,21 +106,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [isReady, isInTelegram, initData])
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        isLoading,
-        isAuthenticated: !!user && !!token,
-        initData,
-        login,
-        logout,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const contextValue = useMemo(
+    () => ({
+      user,
+      token,
+      isLoading,
+      isAuthenticated: !!user && !!token,
+      initData,
+      login,
+      logout,
+    }),
+    [user, token, isLoading, initData],
   )
+
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

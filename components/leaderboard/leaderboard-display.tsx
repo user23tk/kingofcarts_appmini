@@ -43,7 +43,7 @@ export function LeaderboardDisplay() {
 
       console.log("[v0] [LEADERBOARD] Starting fetch...")
 
-      const playersResponse = await fetch("/api/leaderboard/players")
+      const playersResponse = await fetch("/api/miniapp/leaderboard")
 
       console.log("[v0] [LEADERBOARD] Players response:", playersResponse.status)
 
@@ -57,7 +57,7 @@ export function LeaderboardDisplay() {
 
       console.log("[v0] [LEADERBOARD] Players data:", playersData)
 
-      setPlayers(playersData.players || [])
+      setPlayers(playersData.rankings || [])
       setLastUpdated(new Date())
     } catch (err) {
       console.error("[v0] [LEADERBOARD] Fetch error:", err)
