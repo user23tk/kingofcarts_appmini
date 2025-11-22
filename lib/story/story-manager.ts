@@ -417,8 +417,8 @@ export class StoryManager {
     const supabase = createAdminClient()
 
     const { data } = await supabase.rpc("get_theme_progress", {
-      user_progress_row: await this.getUserProgress(userId),
-      theme_name: theme,
+      p_user_id: userId,
+      p_theme_name: theme,
     })
 
     return (
