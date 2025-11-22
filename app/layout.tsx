@@ -11,8 +11,13 @@ export const metadata: Metadata = {
     "Experience interactive storytelling through Telegram with multiple themes, choices, and adventures. Join King of Carts and embark on your journey!",
   generator: "v0.app",
   icons: {
-    icon: "/icon.svg",
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png" }],
   },
+  manifest: "/manifest.json",
 }
 
 export const viewport: Viewport = {
