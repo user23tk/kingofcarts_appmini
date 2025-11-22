@@ -1,6 +1,4 @@
 "use client"
-
-import { useEffect, useState, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/miniapp/auth-context"
 import { Button } from "@/components/ui/button"
@@ -10,6 +8,7 @@ import { Sparkles, BookOpen, Trophy, TrendingUp, Play, Clock, Zap } from "lucide
 import { AnimatedBackground } from "@/components/miniapp/animated-background"
 import { hapticFeedback } from "@/lib/telegram/webapp-client"
 import { motion } from "framer-motion"
+import useSWR from "swr"
 
 interface DashboardData {
   user: {
@@ -38,81 +37,41 @@ interface DashboardData {
   }>
 }
 
+const fetcher = async (url: string) => {
+  const response = await fetch(url, {
+    cache: "no-store",
+    headers: {
+      "Cache-Control": "no-cache",
+    },
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.error || "Failed to fetch dashboard")
+  }
+
+  return response.json()
+}
+
 export default function MiniAppHome() {
   const router = useRouter()
   const { isAuthenticated, isLoading, user } = useAuth()
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const lastFetchTime = useRef<number>(0)
+  const {
+    data: dashboardData,
+    error,
+    isLoading: dataLoading,
+    mutate,
+  } = useSWR<DashboardData>(isAuthenticated && user?.id ? `/api/miniapp/dashboard?userId=${user.id}` : null, fetcher, {
+    refreshInterval: 0, // Disabled automatic polling - only fetch on mount, focus, and manual refresh
+    revalidateOnFocus: true, // Refetch when user returns to tab
+    revalidateOnReconnect: true, // Refetch when connection is restored
+    dedupingInterval: 300000, // 5 minutes - prevents duplicate requests within this window
+    focusThrottleInterval: 60000, // Throttle focus revalidation to max once per minute
+  })
 
-  const fetchDashboard = useCallback(
-    async (force = false) => {
-      if (!force && Date.now() - lastFetchTime.current < 60000 && dashboardData) {
-        return
-      }
+  const loading = isLoading || dataLoading
 
-      try {
-        if (!dashboardData) {
-          setError(null)
-        }
-
-        const response = await fetch(`/api/miniapp/dashboard?userId=${user?.id}`, {
-          cache: "no-store",
-          headers: {
-            "Cache-Control": "no-cache",
-          },
-        })
-
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || "Failed to fetch dashboard")
-        }
-
-        const data = await response.json()
-        lastFetchTime.current = Date.now()
-        setDashboardData(data)
-      } catch (error) {
-        console.error("Failed to fetch dashboard:", error)
-        setError(error instanceof Error ? error.message : "Failed to load dashboard")
-      } finally {
-        setLoading(false)
-      }
-    },
-    [user?.id, dashboardData],
-  )
-
-  useEffect(() => {
-    if (isAuthenticated && user?.id) {
-      fetchDashboard(true)
-    } else if (!isLoading && !isAuthenticated) {
-      setLoading(false)
-    }
-  }, [isAuthenticated, user, isLoading, fetchDashboard])
-
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && isAuthenticated && user?.id) {
-        fetchDashboard()
-      }
-    }
-
-    const handleFocus = () => {
-      if (isAuthenticated && user?.id) {
-        fetchDashboard()
-      }
-    }
-
-    document.addEventListener("visibilitychange", handleVisibilityChange)
-    window.addEventListener("focus", handleFocus)
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange)
-      window.removeEventListener("focus", handleFocus)
-    }
-  }, [isAuthenticated, user, fetchDashboard])
-
-  if (isLoading || loading) {
+  if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
@@ -129,10 +88,10 @@ export default function MiniAppHome() {
         <Card className="max-w-md">
           <CardHeader>
             <CardTitle>Error Loading Dashboard</CardTitle>
-            <CardDescription>{error}</CardDescription>
+            <CardDescription>{error.message}</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={fetchDashboard} className="w-full">
+            <Button onClick={() => mutate()} className="w-full">
               Try Again
             </Button>
           </CardContent>
@@ -146,7 +105,7 @@ export default function MiniAppHome() {
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <p className="text-muted-foreground">No data available</p>
-          <Button onClick={fetchDashboard} className="mt-4">
+          <Button onClick={() => mutate()} className="mt-4">
             Reload
           </Button>
         </div>

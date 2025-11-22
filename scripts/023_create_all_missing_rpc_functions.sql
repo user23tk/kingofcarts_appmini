@@ -20,6 +20,9 @@ BEGIN
 END;
 $$;
 
+-- Drop get_active_event to allow return type change
+DROP FUNCTION IF EXISTS public.get_active_event();
+
 -- Function: get_active_event
 -- Returns the currently active event
 CREATE OR REPLACE FUNCTION get_active_event()
