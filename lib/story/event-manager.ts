@@ -51,7 +51,7 @@ export class EventManager {
   static async getEventLeaderboard(themeKey: string, limit = 100) {
     const supabase = getAdminClient()
     const { data, error } = await supabase.rpc("get_event_leaderboard", {
-      p_theme: themeKey,
+      p_theme_name: themeKey,
       p_limit: limit,
     })
 

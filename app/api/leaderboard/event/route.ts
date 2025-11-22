@@ -21,17 +21,19 @@ export async function GET() {
 
     console.log("[v0] Active event found:", activeEvent)
 
+    const themeKey = activeEvent.name
+
     // Get event leaderboard
-    const players = await EventManager.getEventLeaderboard(activeEvent.theme_key, 100)
+    const players = await EventManager.getEventLeaderboard(themeKey, 100)
 
     console.log("[v0] Event leaderboard players count:", players.length)
 
     return NextResponse.json({
       activeEvent: {
         id: activeEvent.id,
-        theme_key: activeEvent.theme_key,
-        event_name: activeEvent.name || activeEvent.title || activeEvent.theme_key,
-        event_emoji: activeEvent.emoji || "🎮",
+        theme_key: themeKey,
+        event_name: activeEvent.name || activeEvent.title || themeKey,
+        event_emoji: activeEvent.emoji || activeEvent.event_emoji || "🎮",
         pp_multiplier: activeEvent.pp_multiplier || 1.0,
         event_end_date: activeEvent.event_end_date || activeEvent.end_date,
         description: activeEvent.description,
