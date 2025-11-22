@@ -31,7 +31,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async () => {
     if (!initData) {
-      console.error("[v0] No initData available for authentication")
       return
     }
 
@@ -58,10 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Store token in localStorage
       localStorage.setItem("miniapp_token", data.token)
       localStorage.setItem("miniapp_user", JSON.stringify(data.user))
-
-      console.log("[v0] User logged in:", data.user)
     } catch (error) {
-      console.error("[v0] Login error:", error)
+      console.error("Login error:", error)
       setUser(null)
       setToken(null)
     } finally {
@@ -89,10 +86,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(storedToken)
         setUser(JSON.parse(storedUser))
         setIsLoading(false)
-        console.log("[v0] Restored session from localStorage")
         return
       } catch (error) {
-        console.error("[v0] Failed to restore session:", error)
+        console.error("Failed to restore session:", error)
         localStorage.removeItem("miniapp_token")
         localStorage.removeItem("miniapp_user")
       }

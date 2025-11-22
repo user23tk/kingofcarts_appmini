@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/miniapp/auth-context"
 import { Button } from "@/components/ui/button"
@@ -44,26 +44,61 @@ export default function MiniAppHome() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const lastFetchTime = useRef<number>(0)
+
+  const fetchDashboard = useCallback(
+    async (force = false) => {
+      if (!force && Date.now() - lastFetchTime.current < 60000 && dashboardData) {
+        return
+      }
+
+      try {
+        if (!dashboardData) {
+          setError(null)
+        }
+
+        const response = await fetch(`/api/miniapp/dashboard?userId=${user?.id}`, {
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache",
+          },
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Failed to fetch dashboard")
+        }
+
+        const data = await response.json()
+        lastFetchTime.current = Date.now()
+        setDashboardData(data)
+      } catch (error) {
+        console.error("Failed to fetch dashboard:", error)
+        setError(error instanceof Error ? error.message : "Failed to load dashboard")
+      } finally {
+        setLoading(false)
+      }
+    },
+    [user?.id, dashboardData],
+  )
 
   useEffect(() => {
     if (isAuthenticated && user?.id) {
-      fetchDashboard()
+      fetchDashboard(true)
     } else if (!isLoading && !isAuthenticated) {
       setLoading(false)
     }
-  }, [isAuthenticated, user, isLoading])
+  }, [isAuthenticated, user, isLoading, fetchDashboard])
 
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible" && isAuthenticated && user?.id) {
-        console.log("[v0] Page became visible, refreshing dashboard")
         fetchDashboard()
       }
     }
 
     const handleFocus = () => {
       if (isAuthenticated && user?.id) {
-        console.log("[v0] Window focused, refreshing dashboard")
         fetchDashboard()
       }
     }
@@ -75,34 +110,7 @@ export default function MiniAppHome() {
       document.removeEventListener("visibilitychange", handleVisibilityChange)
       window.removeEventListener("focus", handleFocus)
     }
-  }, [isAuthenticated, user])
-
-  const fetchDashboard = async () => {
-    try {
-      setError(null)
-      console.log("[v0] Fetching dashboard for user:", user?.id)
-      const response = await fetch(`/api/miniapp/dashboard?userId=${user?.id}`, {
-        cache: "no-store",
-        headers: {
-          "Cache-Control": "no-cache",
-        },
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to fetch dashboard")
-      }
-
-      const data = await response.json()
-      console.log("[v0] Dashboard data received:", data)
-      setDashboardData(data)
-    } catch (error) {
-      console.error("[v0] Failed to fetch dashboard:", error)
-      setError(error instanceof Error ? error.message : "Failed to load dashboard")
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [isAuthenticated, user, fetchDashboard])
 
   if (isLoading || loading) {
     return (
@@ -201,7 +209,6 @@ export default function MiniAppHome() {
               </CardHeader>
               <CardContent className="space-y-2">
                 {dashboardData.activeEvents.map((event) => {
-                  console.log("[v0] Rendering event with theme:", event.theme)
                   return (
                     <div key={event.id} className="p-3 rounded-lg bg-background/80 backdrop-blur-sm">
                       <div className="flex items-center justify-between mb-2">
@@ -217,7 +224,6 @@ export default function MiniAppHome() {
                       <Button
                         className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold"
                         onClick={() => {
-                          console.log("[v0] Play contest clicked for theme:", event.theme)
                           hapticFeedback("medium")
                           router.push(`/story/${event.theme}`)
                         }}

@@ -30,10 +30,10 @@ export async function GET() {
       activeEvent: {
         id: activeEvent.id,
         theme_key: activeEvent.theme_key,
-        event_name: activeEvent.name || activeEvent.title,
-        event_emoji: activeEvent.emoji,
-        pp_multiplier: activeEvent.pp_multiplier,
-        event_end_date: activeEvent.end_date,
+        event_name: activeEvent.name || activeEvent.title || activeEvent.theme_key,
+        event_emoji: activeEvent.emoji || "🎮",
+        pp_multiplier: activeEvent.pp_multiplier || 1.0,
+        event_end_date: activeEvent.event_end_date || activeEvent.end_date,
         description: activeEvent.description,
       },
       players: players.map((player: any, index: number) => ({
