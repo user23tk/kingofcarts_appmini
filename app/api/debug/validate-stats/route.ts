@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
       const { data: userProgressData, error: upError } = await supabase
         .from("user_progress")
-        .select("user_id, completed_themes, theme_progress, total_chapters_completed, total_pp")
+        .select("user_id, theme_progress, chapters_completed, themes_completed, total_pp, completed_themes")
 
       if (upError) {
         console.error("[v0] Error fetching user_progress:", upError)
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
           0,
         )
 
-        if (user.total_chapters_completed !== calculatedChapters) {
+        if (user.chapters_completed !== calculatedChapters) {
           usersWithChapterCountMismatch++
         }
       }
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
         issues.push({
           type: "User Progress",
           severity: "error",
-          description: "total_chapters_completed non corrisponde alla somma dei capitoli completati",
+          description: "chapters_completed non corrisponde alla somma dei capitoli completati",
           affectedCount: usersWithChapterCountMismatch,
         })
       }
@@ -117,10 +117,7 @@ export async function POST(request: NextRequest) {
       let expectedThemes = 0
 
       for (const user of userProgressData || []) {
-        // Sum of total_chapters_completed from all users
-        expectedChapters += user.total_chapters_completed || 0
-
-        // Count of completed themes from completed_themes array
+        expectedChapters += user.chapters_completed || 0
         expectedThemes += (user.completed_themes || []).length
       }
 
@@ -168,7 +165,7 @@ export async function POST(request: NextRequest) {
 
       const { data: userProgressData, error: upError } = await supabase
         .from("user_progress")
-        .select("user_id, completed_themes, theme_progress, total_chapters_completed, total_pp")
+        .select("user_id, theme_progress, chapters_completed, themes_completed, total_pp, completed_themes")
 
       if (upError) {
         console.error("[v0] Error fetching user_progress:", upError)
@@ -180,7 +177,7 @@ export async function POST(request: NextRequest) {
         let needsUpdate = false
         const updatedThemeProgress = { ...themeProgress }
         let updatedCompletedThemes = [...(user.completed_themes || [])]
-        let updatedTotalChapters = user.total_chapters_completed || 0
+        let updatedChaptersCompleted = user.chapters_completed || 0
 
         const completedInProgress = Object.entries(themeProgress)
           .filter(([_, progress]: [string, any]) => progress.completed === true)
@@ -211,19 +208,19 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        const correctTotalChapters = Object.values(updatedThemeProgress).reduce(
+        const correctChaptersCompleted = Object.values(updatedThemeProgress).reduce(
           (sum, progress: any) => sum + Math.max(0, (progress.current_chapter || 1) - 1),
           0,
         )
 
-        if (updatedTotalChapters !== correctTotalChapters) {
+        if (updatedChaptersCompleted !== correctChaptersCompleted) {
           repairs.push({
             userId: user.user_id,
-            repairType: "recalculate_total_chapters",
-            oldValue: String(updatedTotalChapters),
-            newValue: String(correctTotalChapters),
+            repairType: "recalculate_chapters",
+            oldValue: String(updatedChaptersCompleted),
+            newValue: String(correctChaptersCompleted),
           })
-          updatedTotalChapters = correctTotalChapters
+          updatedChaptersCompleted = correctChaptersCompleted
           needsUpdate = true
         }
 
@@ -233,7 +230,7 @@ export async function POST(request: NextRequest) {
             .update({
               completed_themes: updatedCompletedThemes,
               theme_progress: updatedThemeProgress,
-              total_chapters_completed: updatedTotalChapters,
+              chapters_completed: updatedChaptersCompleted,
             })
             .eq("user_id", user.user_id)
 
@@ -245,13 +242,13 @@ export async function POST(request: NextRequest) {
 
       const { data: userProgressDataForGlobal } = await supabase
         .from("user_progress")
-        .select("completed_themes, total_chapters_completed")
+        .select("chapters_completed, completed_themes")
 
       let correctChapters = 0
       let correctThemes = 0
 
       for (const user of userProgressDataForGlobal || []) {
-        correctChapters += user.total_chapters_completed || 0
+        correctChapters += user.chapters_completed || 0
         correctThemes += (user.completed_themes || []).length
       }
 

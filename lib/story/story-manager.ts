@@ -270,6 +270,7 @@ export class StoryManager {
           chapters_completed: currentChaptersCompleted + 1,
           themes_completed: isNewThemeCompletion ? currentThemesCompleted + 1 : currentThemesCompleted,
           total_pp: newTotalPP,
+          completed_themes: isNewThemeCompletion ? [...completedThemes, theme] : completedThemes,
         })
         .eq("user_id", userId)
 
@@ -280,7 +281,7 @@ export class StoryManager {
 
       const { data: verifyData } = await supabase
         .from("user_progress")
-        .select("total_pp, chapters_completed, themes_completed")
+        .select("total_pp, chapters_completed, themes_completed, completed_themes")
         .eq("user_id", userId)
         .single()
 
