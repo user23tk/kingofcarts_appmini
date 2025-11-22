@@ -55,9 +55,12 @@ BEGIN
 END;
 $$;
 
+-- Drop existing function to allow return type change
+DROP FUNCTION IF EXISTS get_event_leaderboard(text, integer);
+
 -- Function: get_event_leaderboard
 -- Returns leaderboard for a specific event
-CREATE OR REPLACE FUNCTION get_event_leaderboard(p_theme_name text, p_limit integer DEFAULT 100)
+CREATE OR REPLACE FUNCTION get_event_leaderboard(p_theme text, p_limit integer DEFAULT 100)
 RETURNS TABLE (
   user_id text,
   total_pp integer,
@@ -75,15 +78,18 @@ BEGIN
     el.chapters_completed,
     el.rank
   FROM event_leaderboard el
-  WHERE el.theme = p_theme_name
+  WHERE el.theme = p_theme
   ORDER BY el.rank ASC
   LIMIT p_limit;
 END;
 $$;
 
+-- Drop existing function to allow return type change
+DROP FUNCTION IF EXISTS get_user_event_rank(text, text);
+
 -- Function: get_user_event_rank
 -- Returns a specific user's rank in an event
-CREATE OR REPLACE FUNCTION get_user_event_rank(p_user_id text, p_theme_name text)
+CREATE OR REPLACE FUNCTION get_user_event_rank(p_user_id text, p_theme text)
 RETURNS TABLE (
   user_id text,
   total_pp integer,
@@ -102,7 +108,7 @@ BEGIN
     el.rank
   FROM event_leaderboard el
   WHERE el.user_id = p_user_id
-    AND el.theme = p_theme_name;
+    AND el.theme = p_theme;
 END;
 $$;
 
@@ -110,7 +116,7 @@ $$;
 -- Atomically updates event leaderboard with row-level locking
 CREATE OR REPLACE FUNCTION update_event_leaderboard_atomic(
   p_user_id text,
-  p_theme_name text,
+  p_theme text,
   p_pp_gained integer,
   p_chapter_completed boolean DEFAULT false
 )
@@ -125,7 +131,7 @@ BEGIN
   -- Lock the row for update or insert if doesn't exist
   SELECT total_pp, chapters_completed INTO v_current_pp, v_current_chapters
   FROM event_leaderboard
-  WHERE user_id = p_user_id AND theme = p_theme_name
+  WHERE user_id = p_user_id AND theme = p_theme
   FOR UPDATE;
   
   IF FOUND THEN
@@ -138,13 +144,13 @@ BEGIN
         ELSE chapters_completed 
       END,
       last_updated = NOW()
-    WHERE user_id = p_user_id AND theme = p_theme_name;
+    WHERE user_id = p_user_id AND theme = p_theme;
   ELSE
     -- Insert new record
     INSERT INTO event_leaderboard (user_id, theme, total_pp, chapters_completed, last_updated)
     VALUES (
       p_user_id,
-      p_theme_name,
+      p_theme,
       p_pp_gained,
       CASE WHEN p_chapter_completed THEN 1 ELSE 0 END,
       NOW()
@@ -157,12 +163,12 @@ BEGIN
       user_id,
       ROW_NUMBER() OVER (ORDER BY total_pp DESC, chapters_completed DESC, last_updated ASC) as new_rank
     FROM event_leaderboard
-    WHERE theme = p_theme_name
+    WHERE theme = p_theme
   )
   UPDATE event_leaderboard el
   SET rank = ru.new_rank
   FROM ranked_users ru
-  WHERE el.user_id = ru.user_id AND el.theme = p_theme_name;
+  WHERE el.user_id = ru.user_id AND el.theme = p_theme;
 END;
 $$;
 

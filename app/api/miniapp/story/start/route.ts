@@ -99,6 +99,28 @@ export async function POST(request: NextRequest) {
     const themeProgress = await storyManager.getThemeProgress(userId, theme)
     const chapterNumber = themeProgress.current_chapter
 
+    const availableChapters = await storyManager.getAvailableChaptersCount(theme)
+
+    console.log("[v0] Chapter check:", {
+      requestedChapter: chapterNumber,
+      availableChapters,
+      themeCompleted: themeProgress.completed,
+    })
+
+    if (chapterNumber > availableChapters) {
+      console.log("[v0] User has completed all available chapters, returning waiting message")
+      return NextResponse.json(
+        {
+          success: false,
+          waiting: true,
+          message: `Hai completato tutti i ${availableChapters} capitoli disponibili per questo tema! 🎉\n\nNuovi capitoli verranno aggiunti presto. Torna a controllare più tardi!`,
+          completedChapters: availableChapters,
+          theme,
+        },
+        { status: 200 },
+      )
+    }
+
     console.log("[v0] Loading chapter:", chapterNumber, "for theme:", theme)
 
     const chapter = await storyManager.getChapter(theme, chapterNumber)

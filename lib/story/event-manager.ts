@@ -51,7 +51,7 @@ export class EventManager {
   static async getEventLeaderboard(themeKey: string, limit = 100) {
     const supabase = getAdminClient()
     const { data, error } = await supabase.rpc("get_event_leaderboard", {
-      p_theme_name: themeKey,
+      p_theme: themeKey,
       p_limit: limit,
     })
 
@@ -127,7 +127,7 @@ export class EventManager {
     if (error) {
       console.error("[v0] Error updating event leaderboard:", error)
     } else {
-      console.log(`[v0] Updated event leaderboard for user ${userId} in theme ${themeKey} with ${ppGained} PP`)
+      console.log(`[v0] [PP UPDATE] Updated event leaderboard for theme ${themeKey}`)
     }
   }
 }

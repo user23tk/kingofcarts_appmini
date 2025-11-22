@@ -416,18 +416,42 @@ export class StoryManager {
   async getThemeProgress(userId: string, theme: string): Promise<ThemeProgress> {
     const supabase = createAdminClient()
 
-    const { data } = await supabase.rpc("get_theme_progress", {
+    const { data, error } = await supabase.rpc("get_theme_progress", {
       p_user_id: userId,
       p_theme_name: theme,
     })
 
-    return (
-      data || {
+    if (error) {
+      console.error("[v0] Error fetching theme progress:", error)
+      // Return safe default if RPC fails
+      return {
         current_chapter: 1,
         completed: false,
         last_interaction: new Date().toISOString(),
       }
-    )
+    }
+
+    if (data) {
+      const validatedChapter = Math.max(1, data.current_chapter || 1)
+      console.log("[v0] Theme progress retrieved:", {
+        theme,
+        originalChapter: data.current_chapter,
+        validatedChapter,
+        completed: data.completed,
+      })
+
+      return {
+        current_chapter: validatedChapter,
+        completed: data.completed || false,
+        last_interaction: data.last_interaction || new Date().toISOString(),
+      }
+    }
+
+    return {
+      current_chapter: 1,
+      completed: false,
+      last_interaction: new Date().toISOString(),
+    }
   }
 
   async getAllThemesProgress(userId: string): Promise<AllThemesProgress> {
