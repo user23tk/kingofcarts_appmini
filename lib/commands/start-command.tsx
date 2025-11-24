@@ -58,8 +58,9 @@ Usa /help per i comandi o scegli un tema qui sotto! 👇
       [{ text: "😂 Commedia", callback_data: "theme_comedy" }],
       [
         { text: "📊 Le Mie Statistiche", callback_data: "show_stats" },
-        { text: "🔗 Condividi Gioco", switch_inline_query: "invita amici" },
+        { text: "🏆 Classifica", url: "https://v0-beta-3-mini-app.vercel.app" },
       ],
+      [{ text: "🔗 Condividi con Amici", switch_inline_query: "" }],
     ],
   }
 

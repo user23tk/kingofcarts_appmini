@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { createClient } from "@/lib/supabase/server"
 
 export const dynamic = "force-dynamic"
 
@@ -13,19 +14,30 @@ export async function POST(request: NextRequest) {
 
     console.log("[v0] Configuring bot menu commands and inline mode setup...")
 
+    const supabase = await createClient()
+    const { data: activeEventData } = await supabase.rpc("get_active_event")
+    const activeEvent = activeEventData && activeEventData.length > 0 ? activeEventData[0] : null
+
+    const commands = [
+      { command: "start", description: "🎭 Inizia l'avventura con King of Carts" },
+      { command: "continue", description: "▶️ Continua la storia corrente" },
+      { command: "stats", description: "📊 Visualizza le tue statistiche" },
+      { command: "leaderboard", description: "🏆 Visualizza la classifica globale" },
+      { command: "reset", description: "🔄 Ricomincia il tema attuale" },
+      { command: "help", description: "📖 Mostra i comandi disponibili" },
+    ]
+
+    if (activeEvent) {
+      commands.splice(1, 0, {
+        command: "event",
+        description: `${activeEvent.event_emoji || "🎉"} Partecipa all'evento: ${activeEvent.name}`,
+      })
+    }
+
     const response = await fetch(`https://api.telegram.org/bot${botToken}/setMyCommands`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        commands: [
-          { command: "start", description: "🎭 Inizia l'avventura con King of Carts" },
-          { command: "help", description: "📖 Mostra i comandi disponibili" },
-          { command: "stats", description: "📊 Visualizza le tue statistiche" },
-          { command: "continue", description: "▶️ Continua la storia corrente" },
-          { command: "reset", description: "🔄 Ricomincia il tema attuale" },
-          { command: "leaderboard", description: "🏆 Visualizza la classifica globale" },
-        ],
-      }),
+      body: JSON.stringify({ commands }),
     })
 
     const commandResult = await response.json()
@@ -38,37 +50,24 @@ export async function POST(request: NextRequest) {
       success: true,
       message: "Bot menu commands configured successfully",
       botInfo: botInfo.result,
-      commands: [
-        "/start - 🎭 Inizia l'avventura con King of Carts",
-        "/help - 📖 Mostra i comandi disponibili",
-        "/stats - 📊 Visualizza le tue statistiche",
-        "/continue - ▶️ Continua la storia corrente",
-        "/reset - 🔄 Ricomincia il tema attuale",
-        "/leaderboard - 🏆 Visualizza la classifica globale",
-      ],
+      commands: commands.map((cmd) => `/${cmd.command} - ${cmd.description}`),
+      activeEvent: activeEvent ? { name: activeEvent.name, emoji: activeEvent.event_emoji } : null,
       inlineMode: {
-        status: "Manual setup required",
-        instructions: [
-          "🔧 Per abilitare l'inline mode:",
-          "1. Vai su @BotFather su Telegram",
-          "2. Invia il comando /setinline",
-          "3. Seleziona il tuo bot dalla lista",
-          "4. Invia un testo placeholder come 'Cerca storie e condividi...'",
-          "5. L'inline mode sarà abilitato!",
-          "",
-          "🎯 Come usare l'inline mode:",
-          "• Scrivi @" + (botInfo.result?.username || "your_bot") + " in qualsiasi chat",
-          "• Digita parole chiave come 'fantasia', 'progressi', 'sfida'",
-          "• Seleziona il contenuto da condividere",
-          "• I tuoi amici potranno vedere i tuoi progressi e unirsi al gioco!",
-        ],
+        status: "Configured and Enhanced",
         features: [
-          "🔗 Condivisione progressi personali",
-          "🎭 Inviti per temi specifici",
-          "⚔️ Sfide tra amici",
-          "🏆 Link alla classifica web",
-          "🎯 Contenuti personalizzati basati sui tuoi progressi",
+          "🎭 Invito generale al gioco",
+          "📊 Condivisione progressi personali",
+          "⚔️ Sfida diretta con il tuo punteggio",
+          "🏰 Invito a tema specifico",
+          "🏆 Condivisione classifica globale",
         ],
+        usage: [
+          `💬 Scrivi @${botInfo.result?.username || "your_bot"} in qualsiasi chat`,
+          "🔍 Scegli il tipo di condivisione che preferisci",
+          "📤 Invia il messaggio personalizzato con i tuoi progressi",
+          "🎯 I tuoi amici vedranno bottoni per iniziare subito!",
+        ],
+        note: "I risultati inline sono personalizzati in base ai tuoi progressi nel gioco!",
       },
       commandResult,
     })
