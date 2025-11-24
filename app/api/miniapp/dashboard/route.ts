@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { EventManager } from "@/lib/story/event-manager"
 import { MiniAppSecurity } from "@/lib/security/miniapp-security"
 import { QueryCache } from "@/lib/cache/query-cache"
+import { LeaderboardManager } from "@/lib/leaderboard/leaderboard-manager"
 
 export const dynamic = "force-dynamic"
 
@@ -10,8 +11,6 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
     const userId = searchParams.get("userId")
-
-    console.log("[v0] Dashboard API called for user:", userId)
 
     if (!userId) {
       return NextResponse.json({ error: "User ID required" }, { status: 400 })
@@ -44,7 +43,7 @@ export async function GET(request: NextRequest) {
       async () => {
         const { data, error } = await supabase.from("users").select("*").eq("id", userId).single()
         if (error) {
-          console.error("[v0] User query error:", error)
+          console.error("[Dashboard] User query error:", error)
           throw new Error("User not found")
         }
         return data
@@ -53,7 +52,7 @@ export async function GET(request: NextRequest) {
     )
 
     if (!user) {
-      console.error("[v0] User not found in database")
+      console.error("[Dashboard] User not found in database")
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
@@ -63,7 +62,7 @@ export async function GET(request: NextRequest) {
         const { data, error } = await supabase.from("user_progress").select("*").eq("user_id", userId).single()
 
         if (error) {
-          console.error("[v0] Progress query error:", error)
+          console.error("[Dashboard] Progress query error:", error)
           return null
         }
         return data
@@ -71,11 +70,9 @@ export async function GET(request: NextRequest) {
       30,
     )
 
-    const chaptersCompleted = progress?.chapters_completed || progress?.total_chapters_completed || 0
-    const themesCompleted = progress?.themes_completed || progress?.completed_themes?.length || 0
+    const chaptersCompleted = progress?.chapters_completed || 0
+    const themesCompleted = progress?.themes_completed || 0
     const totalPP = progress?.total_pp || 0
-
-    console.log("[v0] User stats:", { chaptersCompleted, themesCompleted, totalPP })
 
     const totalThemes = await QueryCache.get(
       `total_themes`,
@@ -93,25 +90,14 @@ export async function GET(request: NextRequest) {
     let totalPlayers = 0
 
     try {
-      const { data: rankData, error: rankError } = await supabase.rpc("get_user_rank", {
-        p_user_id: userId,
-      })
-
-      if (rankError) {
-        console.error("[v0] Rank calculation error:", rankError)
-        // rank remains 0 - correct for errors
-      } else if (rankData && Array.isArray(rankData) && rankData.length > 0) {
-        const rankInfo = rankData[0]
-        rank = rankInfo.rank || 0
-        totalPlayers = rankInfo.total_players || 0
-        console.log("[v0] User rank:", rank, "out of", totalPlayers)
-      } else {
-        console.log("[v0] No rank data returned - user has no progress")
-        // rank remains 0 - correct for users without progress
+      const rankData = await LeaderboardManager.getUserRank(userId)
+      if (rankData) {
+        rank = rankData.rank
+        totalPlayers = rankData.totalPlayers
       }
     } catch (rankErr) {
-      console.error("[v0] Rank calculation failed:", rankErr)
-      // rank remains 0 - correct for network/database errors
+      console.error("[Dashboard] Rank calculation failed:", rankErr)
+      // rank remains 0 - correct for errors
     }
 
     const activeSession =
@@ -123,12 +109,9 @@ export async function GET(request: NextRequest) {
           }
         : null
 
-    console.log("[v0] Active session:", activeSession)
-
     let activeEvents = []
     try {
       const activeEvent = await EventManager.getActiveEvent()
-      console.log("[v0] Active event from EventManager:", activeEvent)
       if (activeEvent) {
         activeEvents = [
           {
@@ -138,10 +121,9 @@ export async function GET(request: NextRequest) {
             endsAt: activeEvent.event_end_date,
           },
         ]
-        console.log("[v0] Active events array:", activeEvents)
       }
     } catch (eventErr) {
-      console.error("[v0] Failed to get events:", eventErr)
+      console.error("[Dashboard] Failed to get events:", eventErr)
     }
 
     return NextResponse.json({
@@ -162,7 +144,7 @@ export async function GET(request: NextRequest) {
       activeEvents,
     })
   } catch (error) {
-    console.error("[v0] Dashboard API error:", error)
+    console.error("[Dashboard] API error:", error)
     return NextResponse.json(
       { error: "Internal server error", details: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 },

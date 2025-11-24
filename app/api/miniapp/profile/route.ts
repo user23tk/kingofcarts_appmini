@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { MiniAppSecurity } from "@/lib/security/miniapp-security"
+import { LeaderboardManager } from "@/lib/leaderboard/leaderboard-manager"
 
 export const dynamic = "force-dynamic"
 
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
     const { data: user, error: userError } = await supabase.from("users").select("*").eq("id", userId).single()
 
     if (userError || !user) {
-      console.error("[v0] User not found:", userError)
+      console.error("[Profile] User not found:", userError)
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
@@ -49,10 +50,8 @@ export async function GET(request: NextRequest) {
     })
 
     if (themeProgressError) {
-      console.error("[v0] Failed to fetch theme progress:", themeProgressError)
+      console.error("[Profile] Failed to fetch theme progress:", themeProgressError)
     }
-
-    console.log("[v0] Theme progress from RPC:", themeProgressData)
 
     // Transform the RPC data to match the expected format
     const themeProgress =
@@ -61,40 +60,24 @@ export async function GET(request: NextRequest) {
         chaptersCompleted: tp.chapters_completed || 0,
         totalChapters: tp.total_chapters || 0,
         bestScore: tp.total_pp || 0,
-        lastPlayed: null, // RPC doesn't provide this, could be added later
+        lastPlayed: null,
       })) || []
 
     const totalPP = progress?.total_pp || 0
     const chaptersCompleted = progress?.chapters_completed || 0
-    const themesCompleted = progress?.themes_completed || progress?.completed_themes?.length || 0
+    const themesCompleted = progress?.themes_completed || 0
 
     const totalThemes = themeProgressData?.length || 7
 
-    let rank = 1
+    let rank = 0
     try {
-      const { data: rankData } = await supabase.rpc("get_user_rank", {
-        p_user_id: userId,
-      })
-      if (Array.isArray(rankData) && rankData.length > 0) {
-        rank = rankData[0].rank || 1
-      } else if (rankData && typeof rankData === "object" && "rank" in rankData) {
-        rank = rankData.rank || 1
-      } else if (typeof rankData === "number") {
-        rank = rankData
+      const rankData = await LeaderboardManager.getUserRank(userId)
+      if (rankData) {
+        rank = rankData.rank
       }
     } catch (err) {
-      console.error("[v0] Rank calculation failed:", err)
+      console.error("[Profile] Rank calculation failed:", err)
     }
-
-    console.log("[v0] Profile data:", {
-      userId,
-      totalPP,
-      chaptersCompleted,
-      themesCompleted,
-      rank,
-      themeProgressCount: themeProgress.length,
-      themeProgress,
-    })
 
     return NextResponse.json({
       user: {
@@ -116,7 +99,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error("[v0] Profile API error:", error)
+    console.error("[Profile] API error:", error)
     return NextResponse.json(
       { error: "Internal server error", details: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 },

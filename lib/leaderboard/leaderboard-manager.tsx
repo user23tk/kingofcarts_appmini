@@ -22,6 +22,15 @@ export interface LeaderboardStats {
   completionRate: number
 }
 
+export interface UserStats {
+  userId: string
+  totalPp: number
+  chaptersCompleted: number
+  themesCompleted: number
+  rank: number
+  totalPlayers: number
+}
+
 export interface LeaderboardEntry {
   rank: number
   userId: string
@@ -32,101 +41,141 @@ export interface LeaderboardEntry {
   lastActive?: string
 }
 
+/**
+ * LeaderboardManager - Centralized leaderboard logic
+ *
+ * RANKING ALGORITHM (PP-FIRST):
+ * 1. total_pp DESC (PRIMARY metric)
+ * 2. themes_completed DESC (secondary tie-breaker)
+ * 3. chapters_completed DESC (tertiary tie-breaker)
+ *
+ * Only users with total_pp > 0 are included in rankings.
+ * Users with 0 PP will have rank = 0 (not ranked).
+ */
 export class LeaderboardManager {
   /**
    * Get top N players from the leaderboard
+   * Uses RPC: get_top_players (PP-first algorithm)
    */
   static async getTopPlayers(limit = 100): Promise<LeaderboardPlayer[]> {
     const supabase = await createClient()
 
     try {
-      console.log("[v0] LeaderboardManager: Fetching top", limit, "players")
-
       const { data, error } = await supabase.rpc("get_top_players", {
         p_limit: limit,
       })
 
       if (error) {
-        console.error("[v0] LeaderboardManager: Error fetching top players:", error)
+        console.error("[LeaderboardManager] Error fetching top players:", error)
         throw error
       }
 
       if (!data || data.length === 0) {
-        console.log("[v0] LeaderboardManager: No players found")
         return []
       }
-
-      console.log("[v0] LeaderboardManager: Found", data.length, "players")
 
       return data.map((player: any) => ({
         userId: player.user_id,
         username: player.username || player.first_name || "Anonymous",
         firstName: player.first_name || "Anonymous",
-        totalScore: player.total_pp || 0,
+        totalScore: player.total_pp || 0, // PP is the primary score
         chaptersCompleted: player.chapters_completed || 0,
         themesCompleted: player.themes_completed || 0,
         rank: Number(player.rank),
       }))
     } catch (error) {
-      console.error("[v0] LeaderboardManager: Failed to get top players:", error)
+      console.error("[LeaderboardManager] Failed to get top players:", error)
       throw error
     }
   }
 
   /**
    * Get a specific user's rank
+   * Uses RPC: get_user_rank (PP-first algorithm)
+   * Returns rank = 0 if user has no PP
    */
   static async getUserRank(userId: string): Promise<UserRank | null> {
     const supabase = await createClient()
 
     try {
-      console.log("[v0] LeaderboardManager: Fetching rank for user", userId)
-
       const { data, error } = await supabase.rpc("get_user_rank", {
         p_user_id: userId,
       })
 
       if (error) {
-        console.error("[v0] LeaderboardManager: Error fetching user rank:", error)
+        console.error("[LeaderboardManager] Error fetching user rank:", error)
         throw error
       }
 
       if (!data || data.length === 0) {
-        console.log("[v0] LeaderboardManager: No rank found for user")
         return null
       }
 
       const rankData = data[0]
-      console.log("[v0] LeaderboardManager: User rank:", rankData)
 
       return {
         rank: Number(rankData.rank) || 0,
         totalPlayers: Number(rankData.total_players) || 0,
       }
     } catch (error) {
-      console.error("[v0] LeaderboardManager: Failed to get user rank:", error)
+      console.error("[LeaderboardManager] Failed to get user rank:", error)
+      return null
+    }
+  }
+
+  /**
+   * Get comprehensive user statistics including rank and progress
+   * Combines data from user_progress table and get_user_rank RPC
+   */
+  static async getUserStats(userId: string): Promise<UserStats | null> {
+    const supabase = await createClient()
+
+    try {
+      // Fetch user progress data
+      const { data: progressData, error: progressError } = await supabase
+        .from("user_progress")
+        .select("total_pp, chapters_completed, themes_completed")
+        .eq("user_id", userId)
+        .single()
+
+      if (progressError) {
+        console.error("[LeaderboardManager] Error fetching user progress:", progressError)
+        return null
+      }
+
+      // Fetch user rank
+      const rankData = await this.getUserRank(userId)
+
+      return {
+        userId,
+        totalPp: progressData?.total_pp || 0,
+        chaptersCompleted: progressData?.chapters_completed || 0,
+        themesCompleted: progressData?.themes_completed || 0,
+        rank: rankData?.rank || 0,
+        totalPlayers: rankData?.totalPlayers || 0,
+      }
+    } catch (error) {
+      console.error("[LeaderboardManager] Failed to get user stats:", error)
       return null
     }
   }
 
   /**
    * Get global leaderboard statistics
+   * Uses RPC: get_leaderboard_stats (PP as top_score)
    */
   static async getLeaderboardStats(): Promise<LeaderboardStats> {
     const supabase = await createClient()
 
     try {
-      console.log("[v0] LeaderboardManager: Fetching leaderboard stats")
-
       const { data, error } = await supabase.rpc("get_leaderboard_stats")
 
       if (error) {
-        console.error("[v0] LeaderboardManager: Error fetching stats:", error)
+        console.error("[LeaderboardManager] Error fetching stats:", error)
         throw error
       }
 
       if (!data || data.length === 0) {
-        console.log("[v0] LeaderboardManager: No stats found, returning defaults")
         return {
           totalPlayers: 0,
           averageChapters: 0,
@@ -136,16 +185,15 @@ export class LeaderboardManager {
       }
 
       const stats = data[0]
-      console.log("[v0] LeaderboardManager: Stats:", stats)
 
       return {
         totalPlayers: Number(stats.total_players) || 0,
         averageChapters: Number(stats.avg_chapters) || 0,
-        topScore: Number(stats.top_score) || 0,
+        topScore: Number(stats.top_score) || 0, // Now returns max total_pp
         completionRate: Number(stats.completion_rate) || 0,
       }
     } catch (error) {
-      console.error("[v0] LeaderboardManager: Failed to get stats:", error)
+      console.error("[LeaderboardManager] Failed to get stats:", error)
       return {
         totalPlayers: 0,
         averageChapters: 0,
@@ -174,17 +222,18 @@ export class LeaderboardManager {
       const name = player.firstName.length > 15 ? player.firstName.substring(0, 15) + "..." : player.firstName
 
       message += `${medal} <b>${name}</b>\n`
-      message += `   📚 ${player.chaptersCompleted} capitoli • 🎭 ${player.themesCompleted} temi\n`
-      message += `   ⭐ ${player.totalScore} punti\n\n`
+      message += `   ⭐ <b>${player.totalScore} PP</b> • 🎭 ${player.themesCompleted} temi • 📚 ${player.chaptersCompleted} cap.\n\n`
     })
 
     // Add user's rank if provided
-    if (userRank) {
-      message += `📊 <b>La Tua Posizione:</b> ${userRank.rank}/${userRank.totalPlayers}\n\n`
+    if (userRank && userRank.rank > 0) {
+      message += `📊 <b>La Tua Posizione:</b> #${userRank.rank} su ${userRank.totalPlayers}\n\n`
+    } else if (userRank) {
+      message += `📊 <b>La Tua Posizione:</b> Non classificato (gioca per entrare in classifica!)\n\n`
     }
 
-    message += "<i>Punteggio = Capitoli×10 + Temi×100 + PP totali</i>\n"
-    message += "<i>Aggiornato ogni ora • Continua a giocare per scalare la classifica! 🌟</i>"
+    message += "<i>Classifica basata sui PP (Power Points) 🌟</i>\n"
+    message += "<i>Completa capitoli per guadagnare PP e scalare la classifica!</i>"
 
     return message
   }
