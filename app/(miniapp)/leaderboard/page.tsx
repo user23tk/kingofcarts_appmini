@@ -1,6 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
+
+import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/miniapp/auth-context"
 import { Button } from "@/components/ui/button"
@@ -10,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ArrowLeft, Trophy, Medal, Crown, Users, BookOpen, Target, Zap, Clock } from "lucide-react"
 import { useBackButton, hapticFeedback } from "@/lib/telegram/webapp-client"
 import { motion } from "framer-motion"
+import useSWR from "swr"
 
 interface LeaderboardEntry {
   rank: number
@@ -51,66 +54,62 @@ interface ActiveEvent {
   event_end_date: string
 }
 
+const fetcher = async (url: string) => {
+  const response = await fetch(url, {
+    cache: "no-store",
+    headers: {
+      "Cache-Control": "no-cache",
+    },
+  })
+  if (!response.ok) {
+    throw new Error("Failed to fetch")
+  }
+  return response.json()
+}
+
 export default function LeaderboardPage() {
   const router = useRouter()
   const { user, isLoading } = useAuth()
-  const [leaderboardData, setLeaderboardData] = useState<LeaderboardData | null>(null)
-  const [eventLeaderboard, setEventLeaderboard] = useState<EventLeaderboardEntry[]>([])
-  const [activeEvent, setActiveEvent] = useState<ActiveEvent | null>(null)
   const [activeTab, setActiveTab] = useState<"general" | "event">("general")
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   useBackButton(() => {
     router.push("/")
   })
 
+  const {
+    data: leaderboardData,
+    error: leaderboardError,
+    isLoading: leaderboardLoading,
+  } = useSWR(user?.id ? `/api/miniapp/leaderboard?userId=${user.id}&limit=100` : null, fetcher, {
+    revalidateOnFocus: true,
+    revalidateOnReconnect: true,
+    dedupingInterval: 30000, // 30 seconds
+  })
+
+  const {
+    data: eventData,
+    error: eventError,
+    isLoading: eventLoading,
+  } = useSWR("/api/leaderboard/event", fetcher, {
+    refreshInterval: 10000, // Poll every 10 seconds
+    revalidateOnFocus: true,
+    revalidateOnReconnect: true,
+    dedupingInterval: 5000, // 5 seconds
+  })
+
+  const activeEvent = eventData?.activeEvent || null
+  const eventLeaderboard = eventData?.players || []
+
   useEffect(() => {
-    if (user?.id) {
-      fetchLeaderboards()
+    if (activeEvent && eventLeaderboard.length > 0 && activeTab === "general") {
+      setActiveTab("event")
+    } else if (!activeEvent && activeTab === "event") {
+      setActiveTab("general")
     }
-  }, [user])
+  }, [activeEvent, eventLeaderboard])
 
-  const fetchLeaderboards = async () => {
-    try {
-      setError(null)
-      console.log("[v0] Fetching leaderboards for user:", user?.id)
-
-      const [generalResponse, eventResponse] = await Promise.all([
-        fetch(`/api/miniapp/leaderboard?userId=${user?.id}&limit=100`),
-        fetch("/api/leaderboard/event"),
-      ])
-
-      if (!generalResponse.ok) {
-        throw new Error(`Failed to fetch leaderboard: ${generalResponse.statusText}`)
-      }
-
-      const generalData = await generalResponse.json()
-      console.log("[v0] General leaderboard data received:", generalData)
-      setLeaderboardData(generalData)
-
-      if (eventResponse.ok) {
-        const eventData = await eventResponse.json()
-        console.log("[v0] Event leaderboard data received:", eventData)
-
-        if (eventData.activeEvent && eventData.players) {
-          setActiveEvent(eventData.activeEvent)
-          setEventLeaderboard(eventData.players)
-          if (eventData.players.length > 0) {
-            setActiveTab("event")
-          }
-        } else {
-          setActiveEvent(null)
-          setEventLeaderboard([])
-        }
-      }
-    } catch (error) {
-      console.error("[v0] Failed to fetch leaderboards:", error)
-      setError(error instanceof Error ? error.message : "Failed to load leaderboards")
-    } finally {
-      setLoading(false)
-    }
-  }
+  const loading = isLoading || leaderboardLoading || eventLoading
+  const error = leaderboardError || eventError
 
   const getRankIcon = (rank: number) => {
     if (rank === 1) return <Crown className="w-5 h-5 text-yellow-500" />

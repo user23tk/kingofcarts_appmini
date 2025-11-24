@@ -7,8 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Sparkles, Rocket, Search, Heart, Laugh, Skull, Zap, BarChart3, User, Trophy, Clock } from "lucide-react"
 import { hapticFeedback } from "@/lib/telegram/webapp-client"
-import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
+import useSWR from "swr"
 
 interface ThemeData {
   id: string
@@ -48,50 +48,46 @@ const THEME_COLORS: Record<string, string> = {
   adventure: "from-green-500 to-emerald-600",
 }
 
+const fetcher = async (url: string) => {
+  const response = await fetch(url, {
+    cache: "no-store",
+    headers: {
+      "Cache-Control": "no-cache",
+    },
+  })
+  if (!response.ok) {
+    throw new Error("Failed to fetch")
+  }
+  return response.json()
+}
+
 export default function ThemesPage() {
   const router = useRouter()
   const { user, isAuthenticated, isLoading } = useAuth()
-  const [themes, setThemes] = useState<ThemeData[]>([])
-  const [themesLoading, setThemesLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [activeEvent, setActiveEvent] = useState<ActiveEvent | null>(null)
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const [themesResponse, eventResponse] = await Promise.all([
-          fetch("/api/miniapp/themes"),
-          fetch("/api/leaderboard/event"),
-        ])
+  const {
+    data: themesData,
+    error: themesError,
+    isLoading: themesLoading,
+  } = useSWR("/api/miniapp/themes", fetcher, {
+    revalidateOnFocus: true,
+    revalidateOnReconnect: true,
+    dedupingInterval: 60000, // 1 minute
+  })
 
-        if (!themesResponse.ok) {
-          throw new Error("Failed to fetch themes")
-        }
+  const {
+    data: eventData,
+    error: eventError,
+    isLoading: eventLoading,
+  } = useSWR("/api/leaderboard/event", fetcher, {
+    refreshInterval: 10000, // Poll every 10 seconds to catch event changes quickly
+    revalidateOnFocus: true,
+    revalidateOnReconnect: true,
+    dedupingInterval: 5000, // 5 seconds
+  })
 
-        const themesData = await themesResponse.json()
-        if (themesData.success && themesData.themes) {
-          setThemes(themesData.themes)
-        } else {
-          throw new Error("Invalid response format")
-        }
-
-        if (eventResponse.ok) {
-          const eventData = await eventResponse.json()
-          if (eventData.activeEvent) {
-            setActiveEvent(eventData.activeEvent)
-            console.log("[v0] Active event found:", eventData.activeEvent)
-          }
-        }
-      } catch (err) {
-        console.error("[v0] Error fetching data:", err)
-        setError(err instanceof Error ? err.message : "Failed to load themes")
-      } finally {
-        setThemesLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [])
+  const themes = themesData?.success ? themesData.themes : []
+  const activeEvent = eventData?.activeEvent || null
 
   const handleThemeSelect = (themeId: string) => {
     hapticFeedback("light")
@@ -105,7 +101,7 @@ export default function ThemesPage() {
     }
   }
 
-  if (isLoading || themesLoading) {
+  if (isLoading || themesLoading || eventLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
@@ -116,7 +112,7 @@ export default function ThemesPage() {
     )
   }
 
-  if (error) {
+  if (themesError) {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="text-center">
@@ -206,8 +202,8 @@ export default function ThemesPage() {
       {/* Themes Grid */}
       <div className="grid grid-cols-1 gap-4">
         {themes
-          .filter((theme) => !activeEvent || theme.id !== activeEvent.theme_key)
-          .map((theme) => {
+          .filter((theme: ThemeData) => !activeEvent || theme.id !== activeEvent.theme_key)
+          .map((theme: ThemeData) => {
             const Icon = THEME_ICONS[theme.id] || Sparkles
             const color = THEME_COLORS[theme.id] || "from-gray-500 to-gray-700"
 
