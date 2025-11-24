@@ -18,6 +18,7 @@ import { EventContestManager } from "./event-contest-manager"
 import { StatsValidator } from "./stats-validator"
 import { MiniAppTester } from "./miniapp-tester"
 import { RankDebugger } from "./rank-debugger"
+import { UserValidator } from "./user-validator"
 import {
   Activity,
   Database,
@@ -33,6 +34,7 @@ import {
   CheckCircle2,
   Smartphone,
   Target,
+  User,
 } from "lucide-react"
 
 export function DebugDashboard() {
@@ -41,7 +43,6 @@ export function DebugDashboard() {
 
   const handleRefresh = async () => {
     setIsRefreshing(true)
-    // Simulate refresh delay
     await new Promise((resolve) => setTimeout(resolve, 1000))
     setLastRefresh(new Date())
     setIsRefreshing(false)
@@ -49,7 +50,6 @@ export function DebugDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header Section */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-card-foreground">Debug Dashboard</h1>
@@ -64,7 +64,6 @@ export function DebugDashboard() {
         </div>
       </div>
 
-      {/* Quick Status Alert */}
       <Alert className="border-accent/20 bg-accent/5">
         <Heart className="h-4 w-4 text-accent" />
         <AlertTitle className="text-primary font-semibold">System Status</AlertTitle>
@@ -73,12 +72,10 @@ export function DebugDashboard() {
         </AlertDescription>
       </Alert>
 
-      {/* Rate Limit Status card */}
       <RateLimitStatus />
 
-      {/* Main Dashboard Tabs */}
       <Tabs defaultValue="stats" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-13">
+        <TabsList className="grid w-full grid-cols-14">
           <TabsTrigger value="stats" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
             Statistics
@@ -130,6 +127,10 @@ export function DebugDashboard() {
           <TabsTrigger value="validator" className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4" />
             Validator
+          </TabsTrigger>
+          <TabsTrigger value="user-validator" className="flex items-center gap-2">
+            <User className="h-4 w-4" />
+            User Validator
           </TabsTrigger>
         </TabsList>
 
@@ -183,6 +184,10 @@ export function DebugDashboard() {
 
         <TabsContent value="validator" className="space-y-4">
           <StatsValidator />
+        </TabsContent>
+
+        <TabsContent value="user-validator" className="space-y-4">
+          <UserValidator />
         </TabsContent>
       </Tabs>
     </div>
