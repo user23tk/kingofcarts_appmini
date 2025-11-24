@@ -189,7 +189,7 @@ export default function LeaderboardPage() {
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-white">{leaderboardData?.stats.topScore || 0}</p>
-                      <p className="text-xs text-gray-400">Top Score</p>
+                      <p className="text-xs text-gray-400">Top PP</p>
                     </div>
                   </div>
 
@@ -272,7 +272,7 @@ export default function LeaderboardPage() {
               <Card className="bg-[#242F3D] border-[#2C3847]">
                 <CardHeader>
                   <CardTitle className="text-white">Top 100 Players</CardTitle>
-                  <CardDescription className="text-gray-400">Classifica generale globale</CardDescription>
+                  <CardDescription className="text-gray-400">🎯 Classifica basata sui PP (Power Points)</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {!hasPlayers ? (

@@ -32,6 +32,15 @@ export interface LeaderboardEntry {
   lastActive?: string
 }
 
+export interface UserStats {
+  userId: string
+  totalPP: number
+  themesCompleted: number
+  chaptersCompleted: number
+  rank: number
+  totalPlayers: number
+}
+
 export class LeaderboardManager {
   /**
    * Get top N players from the leaderboard
@@ -183,9 +192,79 @@ export class LeaderboardManager {
       message += `📊 <b>La Tua Posizione:</b> ${userRank.rank}/${userRank.totalPlayers}\n\n`
     }
 
-    message += "<i>Punteggio = Capitoli×10 + Temi×100 + PP totali</i>\n"
-    message += "<i>Aggiornato ogni ora • Continua a giocare per scalare la classifica! 🌟</i>"
+    message += "<i>🎯 Classifica basata sui PP (Power Points)</i>\n"
+    message += "<i>Continua a giocare per guadagnare PP e scalare la classifica! 🌟</i>"
 
     return message
+  }
+
+  /**
+   * Get leaderboard (alias for getTopPlayers for consistency)
+   */
+  static async getLeaderboard(limit = 100): Promise<LeaderboardPlayer[]> {
+    return this.getTopPlayers(limit)
+  }
+
+  /**
+   * Get complete user statistics including rank and progress
+   */
+  static async getUserStats(userId: string): Promise<UserStats | null> {
+    const supabase = await createClient()
+
+    try {
+      console.log("[v0] LeaderboardManager: Fetching user stats for", userId)
+
+      // Get user rank
+      const rankInfo = await this.getUserRank(userId)
+      
+      // Get user progress data
+      const { data: progressData, error: progressError } = await supabase
+        .from("user_progress")
+        .select("total_pp, themes_completed, chapters_completed")
+        .eq("user_id", userId)
+        .single()
+
+      if (progressError) {
+        console.error("[v0] LeaderboardManager: Error fetching user progress:", progressError)
+        return null
+      }
+
+      return {
+        userId,
+        totalPP: progressData?.total_pp || 0,
+        themesCompleted: progressData?.themes_completed || 0,
+        chaptersCompleted: progressData?.chapters_completed || 0,
+        rank: rankInfo?.rank || 0,
+        totalPlayers: rankInfo?.totalPlayers || 0,
+      }
+    } catch (error) {
+      console.error("[v0] LeaderboardManager: Failed to get user stats:", error)
+      return null
+    }
+  }
+
+  /**
+   * Helper to get user ID from telegram ID
+   */
+  static async getUserIdFromTelegramId(telegramId: number): Promise<string | null> {
+    const supabase = await createClient()
+
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("id")
+        .eq("telegram_id", telegramId)
+        .single()
+
+      if (error || !data) {
+        console.error("[v0] LeaderboardManager: Failed to get user ID from telegram ID:", error)
+        return null
+      }
+
+      return data.id
+    } catch (error) {
+      console.error("[v0] LeaderboardManager: Error in getUserIdFromTelegramId:", error)
+      return null
+    }
   }
 }

@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { EventManager } from "@/lib/story/event-manager"
 import { MiniAppSecurity } from "@/lib/security/miniapp-security"
 import { QueryCache } from "@/lib/cache/query-cache"
+import { LeaderboardManager } from "@/lib/leaderboard/leaderboard-manager"
 
 export const dynamic = "force-dynamic"
 
@@ -89,30 +90,12 @@ export async function GET(request: NextRequest) {
       300,
     )
 
-    let rank = 0
-    let totalPlayers = 0
-
-    try {
-      const { data: rankData, error: rankError } = await supabase.rpc("get_user_rank", {
-        p_user_id: userId,
-      })
-
-      if (rankError) {
-        console.error("[v0] Rank calculation error:", rankError)
-        // rank remains 0 - correct for errors
-      } else if (rankData && Array.isArray(rankData) && rankData.length > 0) {
-        const rankInfo = rankData[0]
-        rank = rankInfo.rank || 0
-        totalPlayers = rankInfo.total_players || 0
-        console.log("[v0] User rank:", rank, "out of", totalPlayers)
-      } else {
-        console.log("[v0] No rank data returned - user has no progress")
-        // rank remains 0 - correct for users without progress
-      }
-    } catch (rankErr) {
-      console.error("[v0] Rank calculation failed:", rankErr)
-      // rank remains 0 - correct for network/database errors
-    }
+    // Use centralized LeaderboardManager for rank calculation
+    const userStats = await LeaderboardManager.getUserStats(userId)
+    const rank = userStats?.rank || 0
+    const totalPlayers = userStats?.totalPlayers || 0
+    
+    console.log("[v0] User rank from LeaderboardManager:", rank, "out of", totalPlayers)
 
     const activeSession =
       progress?.current_theme && progress?.current_scene !== null

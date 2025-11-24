@@ -139,12 +139,12 @@ export default function MiniAppHome() {
 
           <div className="flex items-center justify-center gap-4 flex-wrap">
             <Badge variant="secondary" className="text-sm px-3 py-1">
-              <Trophy className="w-3 h-3 mr-1" />
-              {dashboardData.user.rank === 0 ? "Non classificato" : `Rank #${dashboardData.user.rank}`}
-            </Badge>
-            <Badge variant="secondary" className="text-sm px-3 py-1">
               <Sparkles className="w-3 h-3 mr-1" />
               {dashboardData.user.totalPP} PP
+            </Badge>
+            <Badge variant="secondary" className="text-sm px-3 py-1">
+              <Trophy className="w-3 h-3 mr-1" />
+              {dashboardData.user.rank === 0 ? "Inizia a giocare per entrare in classifica" : `Rank #${dashboardData.user.rank}`}
             </Badge>
           </div>
         </motion.div>
