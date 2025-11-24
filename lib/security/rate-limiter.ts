@@ -27,10 +27,17 @@ export class AdvancedRateLimiter {
     console.log(`[v0] [SECURITY] Config: daily=${this.DEFAULT_DAILY_LIMIT}`)
 
     try {
-      const { data: isAllowed } = await supabase.rpc("check_rate_limit", {
+      const { data: isAllowed, error } = await supabase.rpc("check_rate_limit", {
         user_id_param: userId,
         daily_limit: this.DEFAULT_DAILY_LIMIT,
+        should_count: shouldCount,
       })
+
+      if (error) {
+        console.error(`[v0] [SECURITY] Rate limit RPC error:`, error)
+        // Fail open on database errors
+        return { allowed: true, currentTime: amsterdamTime }
+      }
 
       if (!isAllowed) {
         const reason = `Daily limit of ${this.DEFAULT_DAILY_LIMIT} requests exceeded`

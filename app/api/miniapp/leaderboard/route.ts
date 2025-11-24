@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || undefined
       const userAgent = request.headers.get("user-agent") || undefined
 
-      const securityCheck = await MiniAppSecurity.validateRequest(
+      const securityCheck = await MiniAppSecurity.validateReadOnlyRequest(
         userId,
         "VIEW_LEADERBOARD",
         "leaderboard",

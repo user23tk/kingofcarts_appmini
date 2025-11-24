@@ -100,10 +100,10 @@ export class MiniAppSecurity {
   }
 
   /**
-   * Complete security check for Mini App API requests
-   * Returns userId if all checks pass, or error response
+   * Lightweight security check for read-only endpoints (dashboard, profile, leaderboard)
+   * Only validates userId format and logs access - does NOT check rate limits
    */
-  static async validateRequest(
+  static async validateReadOnlyRequest(
     requestedUserId: string,
     action: string,
     resource: string,
@@ -116,12 +116,43 @@ export class MiniAppSecurity {
       return { success: false, error: validation.error || "Invalid userId", status: 400 }
     }
 
-    // 2. Check rate limits
-    const rateLimitResult = await this.checkRateLimit(requestedUserId, true)
+    // 2. Audit log the access (no rate limiting for read-only)
+    await this.auditLog({
+      user_id: requestedUserId,
+      action,
+      resource,
+      ip_address: ipAddress,
+      user_agent: userAgent,
+    })
+
+    return { success: true, userId: requestedUserId }
+  }
+
+  /**
+   * Complete security check for Mini App API requests
+   * Returns userId if all checks pass, or error response
+   * @param shouldCount - Whether to count this request towards rate limit (default: true)
+   */
+  static async validateRequest(
+    requestedUserId: string,
+    action: string,
+    resource: string,
+    ipAddress?: string,
+    userAgent?: string,
+    shouldCount = true,
+  ): Promise<{ success: true; userId: string } | { success: false; error: string; status: number }> {
+    // 1. Validate userId format
+    const validation = this.validateUserId(requestedUserId)
+    if (!validation.valid) {
+      return { success: false, error: validation.error || "Invalid userId", status: 400 }
+    }
+
+    // 2. Check rate limits with shouldCount parameter
+    const rateLimitResult = await this.checkRateLimit(requestedUserId, shouldCount)
     if (!rateLimitResult.allowed) {
       return {
         success: false,
-        error: `Rate limit exceeded. Reset at: ${rateLimitResult.resetAt}`,
+        error: `Rate limit exceeded. ${rateLimitResult.reason || ""} Reset at: ${rateLimitResult.resetTime?.toISOString() || "tomorrow"}`,
         status: 429,
       }
     }

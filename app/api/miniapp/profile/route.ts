@@ -16,7 +16,13 @@ export async function GET(request: NextRequest) {
     const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || undefined
     const userAgent = request.headers.get("user-agent") || undefined
 
-    const securityCheck = await MiniAppSecurity.validateRequest(userId, "VIEW_PROFILE", "profile", ipAddress, userAgent)
+    const securityCheck = await MiniAppSecurity.validateReadOnlyRequest(
+      userId,
+      "VIEW_PROFILE",
+      "profile",
+      ipAddress,
+      userAgent,
+    )
 
     if (!securityCheck.success) {
       return NextResponse.json({ error: securityCheck.error }, { status: securityCheck.status })
