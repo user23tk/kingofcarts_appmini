@@ -3,8 +3,8 @@ import { StoryManager } from "@/lib/story/story-manager"
 import { SessionManager } from "@/lib/story/session-manager"
 import { AdvancedRateLimiter } from "@/lib/security/rate-limiter"
 import { MiniAppSecurity } from "@/lib/security/miniapp-security"
-import { validateTelegramWebAppData, extractUserFromInitData } from "@/lib/telegram/webapp-auth"
-import { TelegramBot } from "@/lib/telegram/bot"
+import { requireTelegramAuth } from "@/lib/miniapp/auth-middleware"
+import { logger } from "@/lib/debug/logger"
 
 export const dynamic = "force-dynamic"
 
@@ -13,38 +13,24 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { initData, theme } = body
 
-    console.log("[v0] Story start API called for theme:", theme)
+    logger.debug("miniapp-story-start", "Story start API called", { theme })
 
-    if (!initData) {
-      return NextResponse.json({ error: "Missing initData" }, { status: 400 })
+    // Manual validation since we need the body first
+    const auth = await requireTelegramAuth(
+      new Request(request.url, {
+        method: "POST",
+        headers: request.headers,
+        body: JSON.stringify({ initData }),
+      }) as NextRequest,
+    )
+    if (!auth.authorized) return auth.response
+
+    const userId = auth.userId!
+    const telegramUser = {
+      id: auth.telegramId!,
+      username: auth.username,
+      first_name: auth.firstName,
     }
-
-    const validation = validateTelegramWebAppData(initData)
-    if (!validation.valid || !validation.data) {
-      console.error("[v0] Invalid Telegram auth:", validation.error)
-      return NextResponse.json({ error: validation.error || "Invalid authentication" }, { status: 401 })
-    }
-
-    const telegramUser = extractUserFromInitData(validation.data)
-    if (!telegramUser) {
-      return NextResponse.json({ error: "User data not found" }, { status: 401 })
-    }
-
-    const bot = new TelegramBot()
-    const user = await bot.getOrCreateUser({
-      id: telegramUser.id,
-      username: telegramUser.username,
-      first_name: telegramUser.first_name,
-      last_name: telegramUser.last_name,
-      language_code: telegramUser.language_code,
-      is_bot: false,
-    })
-
-    if (!user) {
-      return NextResponse.json({ error: "Failed to get user" }, { status: 500 })
-    }
-
-    const userId = user.id
 
     const inputValidation = MiniAppSecurity.validateInput({ theme })
     if (!inputValidation.valid) {
@@ -68,7 +54,7 @@ export async function POST(request: NextRequest) {
 
     const rateLimitResult = await AdvancedRateLimiter.checkRateLimit(userId, undefined, false)
     if (!rateLimitResult.allowed) {
-      console.log("[v0] Rate limit exceeded for user:", userId)
+      logger.warn("miniapp-story-start", "Rate limit exceeded", { userId })
       return NextResponse.json(
         {
           error: "Rate limit exceeded",
@@ -84,13 +70,13 @@ export async function POST(request: NextRequest) {
 
     const isValid = await storyManager.isValidTheme(theme)
     if (!isValid) {
-      console.error("[v0] Invalid theme:", theme)
+      logger.error("miniapp-story-start", "Invalid theme", { theme })
       return NextResponse.json({ error: "Invalid theme" }, { status: 400 })
     }
 
     let progress = await storyManager.getUserProgress(userId)
     if (!progress) {
-      console.log("[v0] Creating new user progress")
+      logger.debug("miniapp-story-start", "Creating new user progress")
       progress = await storyManager.createUserProgress(userId, theme)
     }
 
@@ -101,14 +87,14 @@ export async function POST(request: NextRequest) {
 
     const availableChapters = await storyManager.getAvailableChaptersCount(theme)
 
-    console.log("[v0] Chapter check:", {
+    logger.debug("miniapp-story-start", "Chapter check", {
       requestedChapter: chapterNumber,
       availableChapters,
       themeCompleted: themeProgress.completed,
     })
 
     if (chapterNumber > availableChapters) {
-      console.log("[v0] User has completed all available chapters, returning waiting message")
+      logger.info("miniapp-story-start", "User completed all available chapters", { userId, theme })
       return NextResponse.json(
         {
           success: false,
@@ -121,25 +107,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log("[v0] Loading chapter:", chapterNumber, "for theme:", theme)
+    logger.debug("miniapp-story-start", "Loading chapter", { chapterNumber, theme })
 
     const chapter = await storyManager.getChapter(theme, chapterNumber)
     if (!chapter) {
-      console.error("[v0] Chapter not found:", { theme, chapterNumber })
+      logger.error("miniapp-story-start", "Chapter not found", { theme, chapterNumber })
       return NextResponse.json(
         { error: `Chapter ${chapterNumber} not found for theme ${theme}. Please add chapters to the database.` },
         { status: 404 },
       )
     }
 
-    console.log("[v0] Chapter loaded:", {
-      title: chapter.title,
-      scenesCount: chapter.scenes?.length,
-      firstSceneExists: !!chapter.scenes?.[0],
-    })
-
     if (!chapter.scenes || chapter.scenes.length === 0) {
-      console.error("[v0] Chapter has no scenes:", chapter)
+      logger.error("miniapp-story-start", "Chapter has no scenes", { theme, chapterNumber })
       return NextResponse.json(
         { error: `Chapter ${chapterNumber} for theme ${theme} has no scenes. Please check the database.` },
         { status: 500 },
@@ -150,15 +130,9 @@ export async function POST(request: NextRequest) {
     await sessionManager.incrementInteractionCount()
 
     const firstScene = chapter.scenes[0]
-    console.log("[v0] First scene:", {
-      index: firstScene.index,
-      textLength: firstScene.text?.length,
-      hasChoices: !!firstScene.choices,
-      choicesCount: firstScene.choices?.length,
-    })
 
     if (typeof firstScene.index !== "number" || !firstScene.text) {
-      console.error("[v0] Invalid first scene structure:", firstScene)
+      logger.error("miniapp-story-start", "Invalid first scene structure", { theme, chapterNumber })
       return NextResponse.json({ error: "Invalid scene structure in database" }, { status: 500 })
     }
 
@@ -177,16 +151,11 @@ export async function POST(request: NextRequest) {
       totalPP: progress.total_pp || 0,
     }
 
-    console.log(
-      "[v0] Returning story data - scene index:",
-      response.scene.index,
-      "has choices:",
-      !!response.scene.choices,
-    )
+    logger.info("miniapp-story-start", "Story started successfully", { userId, theme, chapterNumber })
 
     return NextResponse.json(response)
   } catch (error) {
-    console.error("[v0] Error starting story:", error)
+    logger.error("miniapp-story-start", "Error starting story", { error })
     return NextResponse.json(
       {
         error: "Failed to start story",

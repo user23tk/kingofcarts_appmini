@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getAdminClient } from "@/lib/supabase/admin-singleton"
+import { requireDebugAuth } from "@/lib/security/debug-auth"
+import { logger } from "@/lib/debug/logger"
 
 export const dynamic = "force-dynamic"
 
@@ -8,12 +10,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
 
-  try {
-    const { adminKey, userId } = await request.json()
+  const auth = await requireDebugAuth(request)
+  if (!auth.authorized) return auth.response
 
-    if (!adminKey || adminKey !== process.env.DEBUG_ADMIN_KEY) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+  try {
+    const { userId } = await request.json()
 
     if (!userId) {
       return NextResponse.json({ error: "User ID required" }, { status: 400 })
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (userError || !userData) {
-      console.error("[v0] User not found:", userError)
+      logger.error("debug-reset-user-stats", "User not found", { error: userError, userId })
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
@@ -37,20 +38,20 @@ export async function POST(request: NextRequest) {
     const { error: progressError } = await supabase.from("user_progress").delete().eq("user_id", actualUserId)
 
     if (progressError) {
-      console.error("[v0] Error resetting user progress:", progressError)
+      logger.error("debug-reset-user-stats", "Error resetting user progress", { error: progressError })
       return NextResponse.json({ error: "Failed to reset user progress" }, { status: 500 })
     }
 
     const { error: rateLimitError } = await supabase.from("rate_limits").delete().eq("user_id", actualUserId)
 
     if (rateLimitError) {
-      console.error("[v0] Error resetting rate limits:", rateLimitError)
+      logger.error("debug-reset-user-stats", "Error resetting rate limits", { error: rateLimitError })
     }
 
-    console.log(`[v0] User stats reset successfully for telegram_id: ${userId}`)
+    logger.info("debug-reset-user-stats", "User stats reset successfully", { telegramId: userId })
     return NextResponse.json({ success: true, message: `User statistics reset successfully for telegram_id ${userId}` })
   } catch (error) {
-    console.error("[v0] Reset user stats error:", error)
+    logger.error("debug-reset-user-stats", "Reset user stats error", { error })
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

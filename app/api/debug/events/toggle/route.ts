@@ -1,16 +1,17 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { requireDebugAuth } from "@/lib/security/debug-auth"
+import { logger } from "@/lib/debug/logger"
 
 export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
+  const auth = await requireDebugAuth(request)
+  if (!auth.authorized) return auth.response
+
   try {
     const body = await request.json()
-    const { adminKey, eventId, isActive } = body
-
-    if (!adminKey || adminKey !== process.env.DEBUG_ADMIN_KEY) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const { eventId, isActive } = body
 
     if (!eventId) {
       return NextResponse.json({ error: "Event ID richiesto" }, { status: 400 })
@@ -39,13 +40,14 @@ export async function POST(request: NextRequest) {
     const { error } = await supabase.from("themes").update({ is_active: isActive }).eq("id", eventId)
 
     if (error) {
-      console.error("[v0] Error toggling event:", error)
+      logger.error("debug-events-toggle", "Error toggling event", { error, eventId, isActive })
       return NextResponse.json({ error: "Errore nell'aggiornamento dell'evento" }, { status: 500 })
     }
 
+    logger.info("debug-events-toggle", "Event toggled successfully", { eventId, isActive })
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[v0] Error in events toggle:", error)
+    logger.error("debug-events-toggle", "Error in events toggle", { error })
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

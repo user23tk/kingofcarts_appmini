@@ -1,14 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { requireDebugAuth } from "@/lib/security/debug-auth"
+import { logger } from "@/lib/debug/logger"
 
 export const dynamic = "force-dynamic"
 
-// GET - Fetch all events and active event
+// GET - Fetch all events and active event (public endpoint)
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
 
-    // Get all events
     const { data: events, error: eventsError } = await supabase
       .from("themes")
       .select("*")
@@ -16,11 +17,10 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false })
 
     if (eventsError) {
-      console.error("[v0] Error fetching events:", eventsError)
+      logger.error("debug-events", "Error fetching events", { error: eventsError })
       return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 })
     }
 
-    // Get active event
     const { data: activeEvent } = await supabase.rpc("get_active_event")
 
     return NextResponse.json({
@@ -28,20 +28,19 @@ export async function GET(request: NextRequest) {
       activeEvent: activeEvent && activeEvent.length > 0 ? activeEvent[0] : null,
     })
   } catch (error) {
-    console.error("[v0] Error in events GET:", error)
+    logger.error("debug-events", "Error in events GET", { error })
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
 // POST - Create new event
 export async function POST(request: NextRequest) {
+  const auth = await requireDebugAuth(request)
+  if (!auth.authorized) return auth.response
+
   try {
     const body = await request.json()
-    const { adminKey, name, title, description, event_emoji, pp_multiplier, event_end_date, is_active } = body
-
-    if (!adminKey || adminKey !== process.env.DEBUG_ADMIN_KEY) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const { name, title, description, event_emoji, pp_multiplier, event_end_date, is_active } = body
 
     // Validation
     if (!name || !title) {
@@ -108,8 +107,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (themeError) {
-      console.error("[v0] Error creating event:", themeError)
-      console.error("[v0] Error details:", JSON.stringify(themeError, null, 2))
+      logger.error("debug-events", "Error creating event", { error: themeError })
       return NextResponse.json(
         {
           error: "Errore nella creazione dell'evento",
@@ -119,22 +117,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    logger.info("debug-events", "Event created successfully", { eventId: theme.id, name })
     return NextResponse.json({ success: true, event: theme })
   } catch (error) {
-    console.error("[v0] Error in events POST:", error)
+    logger.error("debug-events", "Error in events POST", { error })
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
 // DELETE - Delete event
 export async function DELETE(request: NextRequest) {
+  const auth = await requireDebugAuth(request)
+  if (!auth.authorized) return auth.response
+
   try {
     const body = await request.json()
-    const { adminKey, eventId } = body
-
-    if (!adminKey || adminKey !== process.env.DEBUG_ADMIN_KEY) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const { eventId } = body
 
     if (!eventId) {
       return NextResponse.json({ error: "Event ID richiesto" }, { status: 400 })
@@ -146,13 +144,14 @@ export async function DELETE(request: NextRequest) {
     const { error } = await supabase.from("themes").update({ is_active: false }).eq("id", eventId)
 
     if (error) {
-      console.error("[v0] Error deleting event:", error)
+      logger.error("debug-events", "Error deleting event", { error, eventId })
       return NextResponse.json({ error: "Errore nell'eliminazione dell'evento" }, { status: 500 })
     }
 
+    logger.warn("debug-events", "Event deleted (deactivated)", { eventId })
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[v0] Error in events DELETE:", error)
+    logger.error("debug-events", "Error in events DELETE", { error })
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

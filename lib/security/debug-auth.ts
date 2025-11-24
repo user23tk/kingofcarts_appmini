@@ -1,4 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { logger } from "@/lib/debug/logger"
+import { timingSafeEqual } from "crypto"
 
 /**
  * Centralized authentication middleware for debug endpoints
@@ -23,7 +25,7 @@ export async function requireDebugAuth(request: NextRequest): Promise<{
   const validAdminKey = process.env.DEBUG_ADMIN_KEY
 
   if (!validAdminKey) {
-    console.error("[v0] [SECURITY] DEBUG_ADMIN_KEY not configured")
+    logger.error("debug-auth", "DEBUG_ADMIN_KEY not configured")
     return {
       authorized: false,
       response: NextResponse.json({ error: "Server configuration error" }, { status: 500 }),
@@ -31,9 +33,9 @@ export async function requireDebugAuth(request: NextRequest): Promise<{
   }
 
   // Use timing-safe comparison
-  if (!timingSafeEqual(adminKey, validAdminKey)) {
+  if (!timingSafeEqual(Buffer.from(adminKey), Buffer.from(validAdminKey))) {
     // Log failed attempt
-    console.warn("[v0] [SECURITY] Failed debug auth attempt from:", {
+    logger.warn("debug-auth", "Failed debug auth attempt", {
       ip: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown",
       userAgent: request.headers.get("user-agent") || "unknown",
       path: request.nextUrl.pathname,
@@ -46,7 +48,7 @@ export async function requireDebugAuth(request: NextRequest): Promise<{
   }
 
   // Log successful auth
-  console.log("[v0] [SECURITY] Debug endpoint accessed:", {
+  logger.info("debug-auth", "Debug endpoint accessed", {
     ip: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown",
     path: request.nextUrl.pathname,
   })
@@ -58,19 +60,19 @@ export async function requireDebugAuth(request: NextRequest): Promise<{
 }
 
 /**
- * Timing-safe string comparison to prevent timing attacks
+ * Higher-order function that wraps route handlers with debug authentication
+ * Simplifies endpoint protection by automatically applying requireDebugAuth
  */
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) {
-    return false
+export function withDebugAuth(
+  handler: (req: NextRequest) => Promise<NextResponse>,
+): (req: NextRequest) => Promise<NextResponse> {
+  return async (req: NextRequest) => {
+    const auth = await requireDebugAuth(req)
+    if (!auth.authorized) {
+      return auth.response!
+    }
+    return handler(req)
   }
-
-  let result = 0
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i)
-  }
-
-  return result === 0
 }
 
 /**

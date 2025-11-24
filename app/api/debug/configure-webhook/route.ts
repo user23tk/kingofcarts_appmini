@@ -1,34 +1,39 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { requireDebugAuth } from "@/lib/security/debug-auth"
+import { logger } from "@/lib/debug/logger"
 
 export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
+  const auth = await requireDebugAuth(request)
+  if (!auth.authorized) return auth.response
+
   try {
     const botToken = process.env.TELEGRAM_BOT_TOKEN
     const secretToken = process.env.TELEGRAM_WEBHOOK_SECRET
     const appDomain = (process.env.APP_DOMAIN || "https://v0-telegram-storytelling-bot.vercel.app").replace(/\/$/, "")
 
-    console.log("[v0] Bot token available:", !!botToken)
-    console.log("[v0] Secret token available:", !!secretToken)
-    console.log("[v0] App domain (normalized):", appDomain)
+    logger.info("debug-configure-webhook", "Configuring webhook", {
+      hasBotToken: !!botToken,
+      hasSecretToken: !!secretToken,
+      appDomain,
+    })
 
     if (!botToken) {
-      console.log("[v0] ERROR: Bot token not configured")
+      logger.error("debug-configure-webhook", "Bot token not configured")
       return NextResponse.json({ error: "Bot token not configured" }, { status: 500 })
     }
 
     if (!secretToken) {
-      console.log("[v0] ERROR: Webhook secret not configured")
+      logger.error("debug-configure-webhook", "Webhook secret not configured")
       return NextResponse.json({ error: "Webhook secret not configured" }, { status: 500 })
     }
 
     const webhookUrl = `${appDomain}/api/telegram`
 
-    console.log("[v0] Configuring webhook URL:", webhookUrl)
+    logger.info("debug-configure-webhook", "Setting webhook URL", { webhookUrl })
 
     const telegramApiUrl = `https://api.telegram.org/bot${botToken}/setWebhook`
-
-    console.log("[v0] Calling Telegram API:", telegramApiUrl)
 
     const response = await fetch(telegramApiUrl, {
       method: "POST",
@@ -45,11 +50,13 @@ export async function POST(request: NextRequest) {
 
     const result = await response.json()
 
-    console.log("[v0] Telegram API response status:", response.status)
-    console.log("[v0] Telegram API response:", JSON.stringify(result, null, 2))
+    logger.info("debug-configure-webhook", "Telegram API response", {
+      status: response.status,
+      ok: result.ok,
+    })
 
     if (response.ok && result.ok) {
-      console.log("[v0] Webhook configured successfully!")
+      logger.info("debug-configure-webhook", "Webhook configured successfully")
       return NextResponse.json({
         success: true,
         message: "Webhook configured successfully",
@@ -57,7 +64,7 @@ export async function POST(request: NextRequest) {
         result,
       })
     } else {
-      console.log("[v0] ERROR: Webhook configuration failed:", result)
+      logger.error("debug-configure-webhook", "Webhook configuration failed", { result })
       return NextResponse.json(
         {
           error: result.description || "Failed to configure webhook",
@@ -67,7 +74,7 @@ export async function POST(request: NextRequest) {
       )
     }
   } catch (error) {
-    console.error("[v0] Webhook configuration error:", error)
+    logger.error("debug-configure-webhook", "Webhook configuration error", { error })
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

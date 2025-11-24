@@ -3,13 +3,14 @@ import { validateTelegramWebAppData, extractUserFromInitData } from "@/lib/teleg
 import { TelegramBot } from "@/lib/telegram/bot"
 import { sign } from "jsonwebtoken"
 import { MiniAppSecurity } from "@/lib/security/miniapp-security"
+import { logger } from "@/lib/debug/logger"
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.TELEGRAM_WEBHOOK_SECRET
 
 export async function POST(request: NextRequest) {
   try {
     if (!JWT_SECRET) {
-      console.error("[v0] [SECURITY] JWT_SECRET not configured")
+      logger.error("miniapp-auth", "JWT_SECRET not configured")
       return NextResponse.json({ error: "Server configuration error: JWT secret not set" }, { status: 500 })
     }
 
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
     const validation = validateTelegramWebAppData(initData)
 
     if (!validation.valid || !validation.data) {
-      console.error("[v0] Invalid Telegram auth:", validation.error)
+      logger.warn("miniapp-auth", "Invalid Telegram auth", { error: validation.error })
       return NextResponse.json({ error: validation.error || "Invalid authentication data" }, { status: 401 })
     }
 
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
       { expiresIn: "7d" },
     )
 
-    console.log("[v0] User authenticated via Mini App:", {
+    logger.info("miniapp-auth", "User authenticated via Mini App", {
       userId: user.id,
       telegramId: user.telegram_id,
       username: user.username,
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
       token,
     })
   } catch (error) {
-    console.error("[v0] Auth error:", error)
+    logger.error("miniapp-auth", "Auth error", { error })
     return NextResponse.json({ error: "Authentication failed" }, { status: 500 })
   }
 }
