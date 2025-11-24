@@ -2,11 +2,15 @@ import { type NextRequest, NextResponse } from "next/server"
 
 export const dynamic = "force-dynamic"
 
+export async function GET(request: NextRequest) {
+  return POST(request)
+}
+
 export async function POST(request: NextRequest) {
   try {
     const botToken = process.env.TELEGRAM_BOT_TOKEN
     const secretToken = process.env.TELEGRAM_WEBHOOK_SECRET
-    const appDomain = process.env.APP_DOMAIN || "https://v0-beta-3-mini-app.vercel.app"
+    const appDomain = (process.env.APP_DOMAIN || "https://v0-beta-3-mini-app.vercel.app").replace(/\/$/, "")
 
     if (!botToken) {
       return NextResponse.json({ error: "TELEGRAM_BOT_TOKEN not configured" }, { status: 500 })
@@ -33,6 +37,8 @@ export async function POST(request: NextRequest) {
     // Step 2: Set new webhook with correct configuration
     console.log("[v0] Step 2: Setting up new webhook...")
     const webhookUrl = `${appDomain}/api/telegram`
+    console.log("[v0] Webhook URL (normalized):", webhookUrl)
+
     const webhookResponse = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -127,9 +133,13 @@ export async function POST(request: NextRequest) {
             "2. Send the command: /setinline",
             "3. Select your bot from the list",
             "4. Enter a placeholder text (e.g., 'Share your adventure...')",
-            "5. Run this fix endpoint again to verify",
+            "5. Test /start command and inline queries (@kingofcarts_betabot)",
           ]
-        : ["✅ Bot is fully configured and ready to use!", "Test it by sending /start to your bot"],
+        : [
+            "✅ Bot is fully configured and ready to use!",
+            "Test /start command in the bot",
+            "Test inline queries by typing @kingofcarts_betabot in any chat",
+          ],
     })
   } catch (error) {
     console.error("[v0] Error in fix-bot:", error)

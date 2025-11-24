@@ -6,10 +6,11 @@ export async function POST(request: NextRequest) {
   try {
     const botToken = process.env.TELEGRAM_BOT_TOKEN
     const secretToken = process.env.TELEGRAM_WEBHOOK_SECRET
-    const appDomain = process.env.APP_DOMAIN || "https://v0-telegram-storytelling-bot.vercel.app"
+    const appDomain = (process.env.APP_DOMAIN || "https://v0-telegram-storytelling-bot.vercel.app").replace(/\/$/, "")
 
     console.log("[v0] Bot token available:", !!botToken)
     console.log("[v0] Secret token available:", !!secretToken)
+    console.log("[v0] App domain (normalized):", appDomain)
 
     if (!botToken) {
       console.log("[v0] ERROR: Bot token not configured")
