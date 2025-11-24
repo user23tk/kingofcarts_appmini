@@ -332,18 +332,8 @@ async function handleInlineQuery(inlineQuery: any) {
 
     console.log("[v0] Getting user stats for inline query...")
     const userStats = await storyManager.getUserStats(userId)
-    const supabase = await createClient()
-
-    const { data: userProgress } = await supabase
-      .from("user_theme_progress")
-      .select("theme_name, current_chapter")
-      .eq("user_id", userId)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .single()
 
     console.log("[v0] User stats retrieved:", userStats)
-    console.log("[v0] User current progress:", userProgress)
 
     const playerName = inlineQuery.from.first_name || "Viaggiatore"
     const botName = process.env.BOT_DISPLAY_NAME || "King of Carts"
@@ -351,7 +341,6 @@ async function handleInlineQuery(inlineQuery: any) {
 
     console.log("[v0] Bot configuration - Display Name:", botName)
     console.log("[v0] Bot configuration - Username:", botUsername)
-    console.log("[v0] Environment BOT_USERNAME:", process.env.BOT_USERNAME)
 
     const results = []
     const inviteUrl = `https://t.me/${botUsername}?start=invite_${userId}`
@@ -369,107 +358,17 @@ async function handleInlineQuery(inlineQuery: any) {
       reply_markup: {
         inline_keyboard: [
           [{ text: "🎭 Inizia Avventura", url: inviteUrl }],
-          [{ text: "🏆 Vedi Classifica", url: `https://v0-beta-3-mini-app.vercel.app` }],
+          [
+            {
+              text: "🎮 Apri Mini App",
+              url: `https://t.me/${botUsername}/${process.env.BOT_DISPLAY_NAME?.toLowerCase().replace(/\s+/g, "") || "kingofcarts"}`,
+            },
+          ],
         ],
       },
     })
 
-    if (userStats && userStats.total_chapters_completed > 0) {
-      const progressText = `🎭 <b>I Miei Progressi in ${botName}</b>\n\n👤 ${playerName}\n\n📊 <b>Statistiche:</b>\n🏆 PP Totali: ${userStats.total_pp}\n📖 Capitoli Completati: ${userStats.total_chapters_completed}\n🎯 Temi Esplorati: ${userStats.themes_unlocked}\n⭐ Rank: ${userStats.rank_name}\n\n${playerName} sta dominando il gioco! Unisciti alla sfida!`
-
-      results.push({
-        type: "article",
-        id: "share_stats",
-        title: `📊 Condividi i Tuoi Progressi`,
-        description: `${userStats.total_pp} PP • ${userStats.total_chapters_completed} Capitoli • Rank: ${userStats.rank_name}`,
-        thumbnail_url: "https://v0-beta-3-mini-app.vercel.app/og-image.png",
-        input_message_content: {
-          message_text: progressText,
-          parse_mode: "HTML",
-        },
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: "🎮 Gioca Anche Tu", url: inviteUrl }],
-            [{ text: "🏆 Vedi Classifica Completa", url: `https://v0-beta-3-mini-app.vercel.app` }],
-          ],
-        },
-      })
-    }
-
-    if (userStats && userStats.total_pp > 0) {
-      const challengeText = `⚔️ <b>Sfida in ${botName}!</b>\n\n${playerName} ti sfida!\n\n💎 Il mio punteggio: <b>${userStats.total_pp} PP</b>\n🏆 Rank: ${userStats.rank_name}\n📖 Capitoli: ${userStats.total_chapters_completed}\n\n🔥 Riesci a battermi? Accetta la sfida!`
-
-      results.push({
-        type: "article",
-        id: "challenge_friends",
-        title: `⚔️ Sfida i Tuoi Amici`,
-        description: `Il tuo punteggio: ${userStats.total_pp} PP • Sfida gli altri a batterti!`,
-        thumbnail_url: "https://v0-beta-3-mini-app.vercel.app/og-image.png",
-        input_message_content: {
-          message_text: challengeText,
-          parse_mode: "HTML",
-        },
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: "⚔️ Accetta la Sfida", url: inviteUrl }],
-            [{ text: "🏆 Vedi Classifica", url: `https://v0-beta-3-mini-app.vercel.app` }],
-          ],
-        },
-      })
-    }
-
-    if (userProgress && userProgress.theme_name) {
-      const themeEmojis: Record<string, string> = {
-        fantasy: "🏰",
-        "sci-fi": "🚀",
-        mystery: "🔍",
-        romance: "💕",
-        adventure: "🗺️",
-        horror: "👻",
-        comedy: "😂",
-      }
-
-      const themeEmoji = themeEmojis[userProgress.theme_name] || "🎭"
-      const themeText = `${themeEmoji} <b>${botName} - ${userProgress.theme_name.charAt(0).toUpperCase() + userProgress.theme_name.slice(1)}</b>\n\n${playerName} sta giocando al tema <b>${userProgress.theme_name}</b>!\n\n📖 Capitolo Attuale: ${userProgress.current_chapter}\n💎 PP Totali: ${userStats?.total_pp || 0}\n\n🎯 Unisciti all'avventura!`
-
-      results.push({
-        type: "article",
-        id: `invite_theme_${userProgress.theme_name}`,
-        title: `${themeEmoji} Invita al Tema: ${userProgress.theme_name}`,
-        description: `Condividi la tua avventura in ${userProgress.theme_name}`,
-        thumbnail_url: "https://v0-beta-3-mini-app.vercel.app/og-image.png",
-        input_message_content: {
-          message_text: themeText,
-          parse_mode: "HTML",
-        },
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: `${themeEmoji} Gioca ${userProgress.theme_name}`, url: inviteUrl }],
-            [{ text: "🎭 Esplora Altri Temi", url: inviteUrl }],
-          ],
-        },
-      })
-    }
-
-    results.push({
-      type: "article",
-      id: "share_leaderboard",
-      title: `🏆 Condividi la Classifica`,
-      description: "Mostra la classifica globale di King of Carts",
-      thumbnail_url: "https://v0-beta-3-mini-app.vercel.app/og-image.png",
-      input_message_content: {
-        message_text: `🏆 <b>Classifica Globale - ${botName}</b>\n\n🌟 Scopri chi domina i regni delle storie!\n\n📊 Visualizza le statistiche complete\n🎭 Confronta i tuoi progressi\n⚔️ Sfida i migliori giocatori\n\n👑 Chi sarà il prossimo King of Carts?`,
-        parse_mode: "HTML",
-      },
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "🏆 Vedi Classifica Completa", url: `https://v0-beta-3-mini-app.vercel.app` }],
-          [{ text: "🎮 Inizia a Giocare", url: inviteUrl }],
-        ],
-      },
-    })
-
-    console.log("[v0] Created", results.length, "inline query results")
+    console.log("[v0] Created 1 inline query result (invite only)")
     console.log("[v0] Sending answer to inline query...")
 
     const cacheTime = Number.parseInt(process.env.INLINE_CACHE_TIME || "10")

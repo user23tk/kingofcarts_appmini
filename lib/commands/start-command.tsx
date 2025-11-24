@@ -24,42 +24,14 @@ Sono qui per guidarti a "vedere oltre l'arcobaleno" e diffondere amore e pace at
 🗺️ <b>Avventura</b> • 👻 <b>Horror</b> • 😂 <b>Commedia</b>
 
 ${activeEvent ? `\n🎉 <b>EVENTO SPECIALE ATTIVO: ${activeEvent.name || activeEvent.title}</b> ${activeEvent.event_emoji || "🎃"}\n` : ""}
-Ogni tema contiene storie infinite generate dall'AI! Sei pronto per intraprendere questo viaggio di saggezza e divertimento?
 
-Usa /help per i comandi o scegli un tema qui sotto! 👇
+Ogni tema contiene storie infinite generate dall'AI! Apri la Mini App per iniziare la tua avventura! 🎮
   `,
     playerName,
   )
 
   const keyboard = {
     inline_keyboard: [
-      ...(activeEvent
-        ? [
-            [
-              {
-                text: `${activeEvent.event_emoji || "🎉"} CONTEST - ${activeEvent.name || activeEvent.title}`,
-                callback_data: `theme_${activeEvent.name}`,
-              },
-            ],
-          ]
-        : []),
-      [
-        { text: "🏰 Fantasia", callback_data: "theme_fantasy" },
-        { text: "🚀 Fantascienza", callback_data: "theme_sci-fi" },
-      ],
-      [
-        { text: "🔍 Mistero", callback_data: "theme_mystery" },
-        { text: "💕 Romantico", callback_data: "theme_romance" },
-      ],
-      [
-        { text: "🗺️ Avventura", callback_data: "theme_adventure" },
-        { text: "👻 Horror", callback_data: "theme_horror" },
-      ],
-      [{ text: "😂 Commedia", callback_data: "theme_comedy" }],
-      [
-        { text: "📊 Le Mie Statistiche", callback_data: "show_stats" },
-        { text: "🏆 Classifica", url: "https://v0-beta-3-mini-app.vercel.app" },
-      ],
       [
         {
           text: "🎮 Apri King of Carts",
