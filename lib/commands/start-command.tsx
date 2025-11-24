@@ -60,7 +60,18 @@ Usa /help per i comandi o scegli un tema qui sotto! 👇
         { text: "📊 Le Mie Statistiche", callback_data: "show_stats" },
         { text: "🏆 Classifica", url: "https://v0-beta-3-mini-app.vercel.app" },
       ],
-      [{ text: "🔗 Condividi con Amici", switch_inline_query: "" }],
+      [
+        {
+          text: "🎮 Apri King of Carts",
+          web_app: { url: process.env.APP_DOMAIN || "https://v0-beta-3-mini-app.vercel.app" },
+        },
+      ],
+      [
+        {
+          text: "🔗 Condividi con Amici",
+          switch_inline_query: "Unisciti a me in King of Carts! 🎭",
+        },
+      ],
     ],
   }
 

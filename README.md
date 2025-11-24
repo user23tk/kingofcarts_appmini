@@ -243,7 +243,162 @@ vercel --prod
 # Configurare webhook URL in Telegram
 \`\`\`
 
-### Configurazione Avanzata
+## 🤖 Configurazione Bot Telegram (Mini App)
+
+King of Carts utilizza l'architettura **Telegram Mini App** per offrire un'esperienza di gioco completa e moderna. Il bot Telegram funge da punto di accesso, mentre il gameplay avviene nella Mini App web.
+
+### 🎯 Architettura Mini App vs Bot Tradizionale
+
+**❌ Vecchio Approccio (Rimosso)**:
+- Gioco tramite messaggi e bottoni callback
+- Limitazioni interfaccia
+- Esperienza frammentata
+
+**✅ Nuovo Approccio (Mini App)**:
+- Interfaccia web completa full-screen
+- Gameplay fluido e moderno
+- Tutti i comandi aprono la Mini App
+- Inline mode per condivisione social
+
+### ⚡ Setup Rapido
+
+#### 1. Configurazione Automatica
+
+Dopo il deploy, esegui questi endpoint per configurare tutto automaticamente:
+
+\`\`\`bash
+# Configura comandi, descrizioni e inline mode
+curl -X POST https://your-domain.vercel.app/api/debug/configure-bot
+
+# Configura webhook e allowed updates
+curl -X POST https://your-domain.vercel.app/api/debug/fix-bot
+\`\`\`
+
+#### 2. Configurazione Manuale su @BotFather
+
+**OBBLIGATORIO** - Devi abilitare l'inline mode manualmente:
+
+\`\`\`
+1. Apri @BotFather su Telegram
+2. Invia: /setinline
+3. Seleziona il tuo bot
+4. Inserisci placeholder: "Condividi King of Carts! 🎭"
+\`\`\`
+
+**CONSIGLIATO** - Configura il menu button per accesso rapido:
+
+\`\`\`
+1. @BotFather → /mybots → Seleziona bot → Bot Settings
+2. Menu Button → Configure menu button
+3. Button text: 🎮 Gioca
+4. URL: https://your-domain.vercel.app
+\`\`\`
+
+### 🎮 Come Funziona
+
+#### Flusso Utente
+
+\`\`\`
+Utente invia /start
+    ↓
+Bot risponde con bottone "web_app"
+    ↓
+Click sul bottone
+    ↓
+Mini App si apre (full-screen)
+    ↓
+Gioco completo nella Mini App
+    ↓
+Dati salvati su Supabase
+    ↓
+Condivisione via inline mode
+\`\`\`
+
+#### Comandi Disponibili
+
+Tutti i comandi **aprono la Mini App** (non ci sono più interazioni via messaggi):
+
+| Comando | Azione | URL Mini App |
+|---------|--------|--------------|
+| `/start` | Mostra benvenuto + bottone | Base URL |
+| `/help` | Mostra istruzioni | Base URL |
+| `/stats` | Apri statistiche | `?view=stats` |
+| `/leaderboard` | Apri classifica | `?view=leaderboard` |
+| `/event` | Vai all'evento attivo | `?event=nome_evento` |
+
+#### Inline Mode
+
+Gli utenti possono condividere il gioco scrivendo `@your_bot` in qualsiasi chat:
+
+**5 Opzioni di Condivisione**:
+1. 🎭 **Invito Generale** - Introduzione completa al gioco
+2. 📊 **Progressi Personali** - Condividi PP, capitoli e rank
+3. ⚔️ **Sfida Amici** - Sfida diretta con il tuo punteggio
+4. 🏰 **Tema Specifico** - Invita al tema che stai giocando
+5. 🏆 **Classifica** - Link alla leaderboard web
+
+### 🧪 Testing e Verifica
+
+#### Test Comandi
+
+\`\`\`bash
+# Invia /start nel bot
+# Dovresti vedere:
+# - Messaggio di benvenuto
+# - Bottone "🎮 Apri King of Carts"
+# - Click → Mini App si apre
+\`\`\`
+
+#### Test Inline Mode
+
+\`\`\`bash
+# In qualsiasi chat scrivi: @your_bot
+# Dovresti vedere 5 risultati personalizzati
+# Seleziona uno → Invia
+# Destinatario vede bottoni per giocare
+\`\`\`
+
+#### Verifica Status
+
+\`\`\`bash
+# Check configurazione bot
+curl https://your-domain.vercel.app/api/debug/bot-status
+
+# Dovresti vedere:
+# ✅ webhook.url corretto
+# ✅ supports_inline_queries: true
+# ✅ pending_update_count: 0
+# ❌ NO webhook.last_error_message
+\`\`\`
+
+### 🐛 Troubleshooting
+
+| Problema | Soluzione |
+|----------|-----------|
+| `/start` non risponde | Esegui `/api/debug/fix-bot` per riconfigurare webhook |
+| Inline mode non funziona | Abilita su @BotFather con `/setinline` |
+| Mini App non si apre | Verifica `APP_DOMAIN` senza trailing slash |
+| Webhook error 308 | URL con doppio slash, usa `/api/debug/fix-bot` |
+
+### 📚 Documentazione Completa
+
+Per setup dettagliato, troubleshooting avanzato e best practices, vedi:
+
+**[docs/BOT_SETUP.md](docs/BOT_SETUP.md)** - Guida completa alla configurazione
+
+### ✅ Checklist Pre-Produzione
+
+- [ ] Bot token configurato in environment variables
+- [ ] Webhook configurato e senza errori
+- [ ] Inline mode abilitato su @BotFather
+- [ ] Menu button configurato (opzionale ma consigliato)
+- [ ] Tutti i comandi testati (/start, /help, etc.)
+- [ ] Inline mode testato con condivisione
+- [ ] Mini App si apre correttamente full-screen
+- [ ] Database Supabase connesso
+- [ ] Rate limiting attivo e funzionante
+
+## Configurazione Avanzata
 
 #### **Webhook Telegram**:
 - URL: `https://your-domain.vercel.app/api/telegram`
