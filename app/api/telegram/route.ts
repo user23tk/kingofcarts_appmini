@@ -4,7 +4,6 @@ import type { TelegramUpdate } from "@/lib/telegram/types"
 import { StoryManager } from "@/lib/story/story-manager"
 import { SessionManager } from "@/lib/story/session-manager"
 import { AntiReplayManager } from "@/lib/security/anti-replay"
-import { AdvancedRateLimiter } from "@/lib/security/rate-limiter"
 import { handleStartCommand } from "@/lib/commands/start-command"
 import { createClient } from "@/lib/supabase/server"
 
@@ -111,34 +110,6 @@ async function handleMessage(message: any) {
     console.error("[v0] Failed to get/create user")
     return
   }
-
-  const rateLimitResult = await AdvancedRateLimiter.checkRateLimit(user.id, undefined, false)
-  if (!rateLimitResult.allowed) {
-    const currentTimeStr = rateLimitResult.currentTime
-      ? rateLimitResult.currentTime.toLocaleTimeString("it-IT", { timeZone: "Europe/Amsterdam" })
-      : new Date().toLocaleTimeString("it-IT", { timeZone: "Europe/Amsterdam" })
-
-    const keyboard = {
-      inline_keyboard: [
-        [
-          {
-            text: "🎮 Apri Mini App",
-            web_app: { url: process.env.APP_DOMAIN || "https://v0-beta-3-mini-app.vercel.app" },
-          },
-        ],
-      ],
-    }
-
-    await bot.sendMessage(
-      message.chat.id,
-      `🚫 <b>Limite raggiunto!</b>\n\n${rateLimitResult.reason}\nMessaggio inviato alle: ${currentTimeStr}`,
-      keyboard,
-    )
-    return
-  }
-
-  await AdvancedRateLimiter.checkRateLimit(user.id, undefined, true)
-  await sessionManager.incrementInteractionCount()
 
   const text = message.text?.toLowerCase() || ""
 
