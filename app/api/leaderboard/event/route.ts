@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { EventManager } from "@/lib/story/event-manager"
+import { EventLeaderboardManager } from "@/lib/leaderboard/event-leaderboard-manager"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
@@ -8,8 +8,7 @@ export async function GET() {
   try {
     console.log("[v0] Fetching active event and leaderboard")
 
-    // Get active event
-    const activeEvent = await EventManager.getActiveEvent()
+    const activeEvent = await EventLeaderboardManager.getActiveEvent()
 
     if (!activeEvent) {
       console.log("[v0] No active event found")
@@ -32,8 +31,7 @@ export async function GET() {
 
     const themeKey = activeEvent.name
 
-    // Get event leaderboard
-    const players = await EventManager.getEventLeaderboard(themeKey, 100)
+    const players = await EventLeaderboardManager.getEventLeaderboard(themeKey, 100)
 
     console.log("[v0] Event leaderboard players count:", players.length)
 
@@ -48,13 +46,13 @@ export async function GET() {
           event_end_date: activeEvent.event_end_date || activeEvent.end_date,
           description: activeEvent.description,
         },
-        players: players.map((player: any, index: number) => ({
-          rank: index + 1,
-          user_id: player.user_id,
-          first_name: player.first_name || player.username || "Anonymous",
-          total_pp: player.total_pp || 0,
-          chapters_completed: player.chapters_completed || 0,
-          last_updated: player.last_updated || new Date().toISOString(),
+        players: players.map((player) => ({
+          rank: player.rank,
+          user_id: player.userId,
+          first_name: player.firstName,
+          total_pp: player.totalPp,
+          chapters_completed: player.chaptersCompleted,
+          last_updated: player.lastUpdated,
         })),
       },
       {
