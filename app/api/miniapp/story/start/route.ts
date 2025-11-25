@@ -10,20 +10,12 @@ export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { initData, theme } = body
+    const auth = await requireTelegramAuth(request)
+    if (!auth.authorized) return auth.response
+
+    const { theme } = auth.body || {}
 
     logger.debug("miniapp-story-start", "Story start API called", { theme })
-
-    // Manual validation since we need the body first
-    const auth = await requireTelegramAuth(
-      new Request(request.url, {
-        method: "POST",
-        headers: request.headers,
-        body: JSON.stringify({ initData }),
-      }) as NextRequest,
-    )
-    if (!auth.authorized) return auth.response
 
     const userId = auth.userId!
     const telegramUser = {
@@ -144,7 +136,11 @@ export async function POST(request: NextRequest) {
       chapterTitle: chapter.title,
       scene: {
         index: firstScene.index,
-        text: storyManager.formatStoryText(firstScene.text, "Player", progress.total_pp || 0),
+        text: storyManager.formatStoryText(
+          firstScene.text,
+          telegramUser.first_name || "Player",
+          progress.total_pp || 0,
+        ),
         choices: firstScene.choices || null,
       },
       sessionPP: 0,
@@ -155,11 +151,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(response)
   } catch (error) {
-    logger.error("miniapp-story-start", "Error starting story", { error })
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    logger.error("miniapp-story-start", "Error starting story", { error: errorMessage })
     return NextResponse.json(
       {
         error: "Failed to start story",
-        details: error instanceof Error ? error.message : "Unknown error",
+        details: errorMessage,
       },
       { status: 500 },
     )

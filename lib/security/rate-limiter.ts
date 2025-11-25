@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { logger } from "@/lib/debug/logger"
 
 export class AdvancedRateLimiter {
   private static readonly DEFAULT_DAILY_LIMIT = Number.parseInt(process.env.RATE_LIMIT_DAILY_MAX || "20")
@@ -16,15 +17,18 @@ export class AdvancedRateLimiter {
     const amsterdamTime = new Date(currentTime.toLocaleString("en-US", { timeZone: "Europe/Amsterdam" }))
 
     if (this.isRateLimitingDisabled()) {
-      console.log(`[v0] [SECURITY] Rate limiting DISABLED - allowing all requests for user ${userId}`)
+      logger.debug("rate-limiter", "Rate limiting DISABLED - allowing all requests", { userId })
       return { allowed: true, currentTime: amsterdamTime }
     }
 
     const supabase = await createClient()
 
-    console.log(`[v0] [SECURITY] Rate limit check for user ${userId} at ${amsterdamTime.toISOString()}`)
-    console.log(`[v0] [SECURITY] Should count towards limit: ${shouldCount}`)
-    console.log(`[v0] [SECURITY] Config: daily=${this.DEFAULT_DAILY_LIMIT}`)
+    logger.debug("rate-limiter", "Checking rate limit", {
+      userId,
+      shouldCount,
+      dailyLimit: this.DEFAULT_DAILY_LIMIT,
+      time: amsterdamTime.toISOString(),
+    })
 
     try {
       const { data: isAllowed, error } = await supabase.rpc("check_rate_limit", {
@@ -34,7 +38,12 @@ export class AdvancedRateLimiter {
       })
 
       if (error) {
-        console.error(`[v0] [SECURITY] Rate limit RPC error:`, error)
+        logger.error("rate-limiter", "Rate limit RPC error", {
+          error: error.message,
+          code: error.code,
+          details: error.details,
+          userId,
+        })
         // Fail open on database errors
         return { allowed: true, currentTime: amsterdamTime }
       }
@@ -43,7 +52,7 @@ export class AdvancedRateLimiter {
         const reason = `Daily limit of ${this.DEFAULT_DAILY_LIMIT} requests exceeded`
         const resetTime = this.getTomorrowMidnight()
 
-        console.log(`[v0] [SECURITY] Rate limit exceeded for user ${userId}`)
+        logger.warn("rate-limiter", "Rate limit exceeded", { userId, dailyLimit: this.DEFAULT_DAILY_LIMIT })
         return {
           allowed: false,
           reason,
@@ -52,10 +61,11 @@ export class AdvancedRateLimiter {
         }
       }
 
-      console.log(`[v0] [SECURITY] Rate limit passed for user ${userId}`)
+      logger.debug("rate-limiter", "Rate limit check passed", { userId, shouldCount, wasIncremented: shouldCount })
       return { allowed: true, currentTime: amsterdamTime }
     } catch (error) {
-      console.error(`[v0] [SECURITY] Rate limit check error for user ${userId}:`, error)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      logger.error("rate-limiter", "Rate limit check error", { error: errorMessage, userId })
       // Fail open for system errors, but log for monitoring
       return { allowed: true, currentTime: amsterdamTime }
     }

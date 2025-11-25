@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getAdminClient } from "@/lib/supabase/admin-singleton"
+import { requireDebugAuth } from "@/lib/security/debug-auth"
+import { logger } from "@/lib/debug/logger"
 
 export const dynamic = "force-dynamic"
 
@@ -8,14 +10,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
 
+  const auth = await requireDebugAuth(request)
+  if (!auth.authorized) return auth.response
+
   try {
-    const { adminKey } = await request.json()
-
-    if (!adminKey || adminKey !== process.env.DEBUG_ADMIN_KEY) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
     const supabase = getAdminClient()
+
+    logger.warn("debug-reset-global-stats", "Resetting global statistics - critical operation")
 
     const { error: globalError } = await supabase
       .from("global_stats")
@@ -26,14 +27,14 @@ export async function POST(request: NextRequest) {
       .neq("stat_name", "dummy")
 
     if (globalError) {
-      console.error("[v0] Error resetting global stats:", globalError)
+      logger.error("debug-reset-global-stats", "Error resetting global stats", { error: globalError })
       return NextResponse.json({ error: "Failed to reset global stats" }, { status: 500 })
     }
 
-    console.log("[v0] Global stats reset successfully")
+    logger.warn("debug-reset-global-stats", "Global stats reset successfully")
     return NextResponse.json({ success: true, message: "Global statistics reset successfully" })
   } catch (error) {
-    console.error("[v0] Reset global stats error:", error)
+    logger.error("debug-reset-global-stats", "Reset global stats error", { error })
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

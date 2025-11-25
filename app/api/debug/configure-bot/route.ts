@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { requireDebugAuth } from "@/lib/security/debug-auth"
+import { logger } from "@/lib/debug/logger"
 
 export const dynamic = "force-dynamic"
 
@@ -8,15 +10,19 @@ export const dynamic = "force-dynamic"
  * Configures: commands, inline mode, description, and Mini App settings
  */
 export async function POST(request: NextRequest) {
+  const auth = await requireDebugAuth(request)
+  if (!auth.authorized) return auth.response
+
   try {
     const botToken = process.env.TELEGRAM_BOT_TOKEN
     const appDomain = process.env.APP_DOMAIN || "https://v0-beta-3-mini-app.vercel.app"
 
     if (!botToken) {
+      logger.error("debug-configure-bot", "Bot token not configured")
       return NextResponse.json({ error: "Bot token not configured" }, { status: 500 })
     }
 
-    console.log("[v0] Starting comprehensive bot configuration...")
+    logger.info("debug-configure-bot", "Starting comprehensive bot configuration")
 
     const supabase = await createClient()
     const { data: activeEventData } = await supabase.rpc("get_active_event")
@@ -69,6 +75,11 @@ export async function POST(request: NextRequest) {
     // 4. Get bot info
     const botInfoResponse = await fetch(`https://api.telegram.org/bot${botToken}/getMe`)
     const botInfo = await botInfoResponse.json()
+
+    logger.info("debug-configure-bot", "Bot configured successfully", {
+      commandsConfigured: commandsResult.ok,
+      descriptionConfigured: descriptionResult.ok,
+    })
 
     return NextResponse.json({
       success: true,
@@ -123,7 +134,7 @@ export async function POST(request: NextRequest) {
       ],
     })
   } catch (error) {
-    console.error("[v0] Error configuring bot:", error)
+    logger.error("debug-configure-bot", "Error configuring bot", { error })
     return NextResponse.json({ error: "Failed to configure bot", details: String(error) }, { status: 500 })
   }
 }
@@ -132,10 +143,14 @@ export async function POST(request: NextRequest) {
  * GET endpoint to check current configuration
  */
 export async function GET(request: NextRequest) {
+  const auth = await requireDebugAuth(request)
+  if (!auth.authorized) return auth.response
+
   try {
     const botToken = process.env.TELEGRAM_BOT_TOKEN
 
     if (!botToken) {
+      logger.error("debug-configure-bot", "Bot token not configured")
       return NextResponse.json({ error: "Bot token not configured" }, { status: 500 })
     }
 
@@ -159,7 +174,7 @@ export async function GET(request: NextRequest) {
       appDomain: process.env.APP_DOMAIN || "https://v0-beta-3-mini-app.vercel.app",
     })
   } catch (error) {
-    console.error("[v0] Error getting bot configuration:", error)
+    logger.error("debug-configure-bot", "Error getting bot configuration", { error })
     return NextResponse.json({ error: "Failed to get bot configuration" }, { status: 500 })
   }
 }

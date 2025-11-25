@@ -16,15 +16,21 @@ export interface TelegramAuthResult {
   username?: string
   firstName?: string
   response?: NextResponse
+  body?: Record<string, any>
 }
 
 /**
  * Validates Telegram WebApp initData and returns user information
  * Centralizes authentication logic to prevent repetition and ensure consistency
+ *
+ * IMPORTANT: This function consumes request.json(), so it returns the parsed body
+ * for route handlers to use without re-parsing (which would fail)
  */
 export async function requireTelegramAuth(request: NextRequest): Promise<TelegramAuthResult> {
+  let body: Record<string, any> = {}
+
   try {
-    const body = await request.json()
+    body = await request.json()
     const { initData } = body
 
     if (!initData) {
@@ -94,9 +100,12 @@ export async function requireTelegramAuth(request: NextRequest): Promise<Telegra
       telegramId: user.telegram_id,
       username: user.username,
       firstName: user.first_name,
+      body,
     }
   } catch (error) {
-    logger.error("miniapp-auth", "Authentication error", { error })
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const errorStack = error instanceof Error ? error.stack : undefined
+    logger.error("miniapp-auth", "Authentication error", { error: errorMessage, stack: errorStack })
     return {
       authorized: false,
       response: NextResponse.json({ error: "Authentication failed" }, { status: 500 }),

@@ -21,16 +21,21 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json()
-    const { theme, chapterNumber, sceneIndex, choiceId } = body
+    const { theme, chapterNumber, sceneIndex, choiceId } = auth.body || {}
 
-    const rateLimitResult = await AdvancedRateLimiter.checkRateLimit(userId, undefined, false)
-    if (!rateLimitResult.allowed) {
+    if (!theme || chapterNumber === undefined || sceneIndex === undefined || !choiceId) {
+      logger.warn("miniapp-story-choice", "Missing required fields", { theme, chapterNumber, sceneIndex, choiceId })
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+    }
+
+    const rateLimitCheck = await AdvancedRateLimiter.checkRateLimit(userId, undefined, false)
+    if (!rateLimitCheck.allowed) {
+      logger.warn("miniapp-story-choice", "Rate limit exceeded", { userId, reason: rateLimitCheck.reason })
       return NextResponse.json(
         {
           error: "Rate limit exceeded",
-          reason: rateLimitResult.reason,
-          resetTime: rateLimitResult.resetTime,
+          reason: rateLimitCheck.reason,
+          resetTime: rateLimitCheck.resetTime,
         },
         { status: 429 },
       )
@@ -43,16 +48,19 @@ export async function POST(request: NextRequest) {
 
     const session = sessionManager.getSession(userId)
     if (!session) {
+      logger.warn("miniapp-story-choice", "Session not found", { userId })
       return NextResponse.json({ error: "Session expired. Please restart the story." }, { status: 400 })
     }
 
     const chapter = await storyManager.getChapter(theme, chapterNumber)
     if (!chapter) {
+      logger.warn("miniapp-story-choice", "Chapter not found", { theme, chapterNumber })
       return NextResponse.json({ error: "Chapter not found" }, { status: 404 })
     }
 
     const currentScene = chapter.scenes[sceneIndex]
     if (!currentScene) {
+      logger.warn("miniapp-story-choice", "Invalid scene", { sceneIndex, totalScenes: chapter.scenes.length })
       return NextResponse.json({ error: "Invalid scene" }, { status: 400 })
     }
 
@@ -63,6 +71,10 @@ export async function POST(request: NextRequest) {
     } else {
       const selectedChoice = currentScene.choices?.find((c) => c.id === choiceId)
       if (!selectedChoice) {
+        logger.warn("miniapp-story-choice", "Invalid choice", {
+          choiceId,
+          availableChoices: currentScene.choices?.map((c) => c.id),
+        })
         return NextResponse.json({ error: "Invalid choice" }, { status: 400 })
       }
 
@@ -81,11 +93,14 @@ export async function POST(request: NextRequest) {
     })
 
     if (!updatedSession) {
+      logger.error("miniapp-story-choice", "Failed to update session", { userId })
       return NextResponse.json({ error: "Session error" }, { status: 500 })
     }
 
     await sessionManager.incrementInteractionCount()
+
     await AdvancedRateLimiter.checkRateLimit(userId, undefined, true)
+    logger.debug("miniapp-story-choice", "Rate limit incremented", { userId })
 
     const nextSceneIndex = sceneIndex + 1
     const isLastScene = nextSceneIndex >= chapter.scenes.length
@@ -124,6 +139,7 @@ export async function POST(request: NextRequest) {
 
     const nextScene = chapter.scenes[nextSceneIndex]
     if (!nextScene) {
+      logger.error("miniapp-story-choice", "Invalid chapter structure - missing next scene", { nextSceneIndex })
       return NextResponse.json({ error: "Invalid chapter structure" }, { status: 500 })
     }
 
@@ -146,7 +162,13 @@ export async function POST(request: NextRequest) {
       totalPP: progress?.total_pp || 0,
     })
   } catch (error) {
-    logger.error("miniapp-story-choice", "Error processing choice", { error, userId })
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const errorStack = error instanceof Error ? error.stack : undefined
+    logger.error("miniapp-story-choice", "Error processing choice", {
+      error: errorMessage,
+      stack: errorStack,
+      userId,
+    })
     return NextResponse.json({ error: "Failed to process choice" }, { status: 500 })
   }
 }

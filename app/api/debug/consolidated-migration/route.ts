@@ -1,18 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { requireDebugAuth } from "@/lib/security/debug-auth"
+import { logger } from "@/lib/debug/logger"
 
 export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest) {
+  const auth = await requireDebugAuth(request)
+  if (!auth.authorized) return auth.response
+
   try {
-    // Verify admin authentication
-    const authHeader = request.headers.get("authorization")
-    const adminKey = process.env.DEBUG_ADMIN_KEY
-
-    if (!adminKey || !authHeader || authHeader !== `Bearer ${adminKey}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
     const supabase = await createClient()
 
     // Get comprehensive migration status
@@ -33,6 +30,12 @@ export async function GET(request: NextRequest) {
         ?.filter((u) => u.theme_progress && Object.keys(u.theme_progress).length > 0)
         .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0]?.updated_at || null
 
+    logger.info("debug-migration", "Migration status checked", {
+      totalUsers,
+      migratedUsers: usersWithThemeProgress,
+      pendingUsers: usersNeedingMigration,
+    })
+
     return NextResponse.json({
       totalUsers,
       migratedUsers: usersWithThemeProgress,
@@ -42,7 +45,7 @@ export async function GET(request: NextRequest) {
       migrationComplete: usersNeedingMigration === 0 && usersWithThemeProgress > 0,
     })
   } catch (error) {
-    console.error("[v0] Migration status error:", error)
+    logger.error("debug-migration", "Migration status error", { error })
     return NextResponse.json(
       {
         error: "Internal server error",
@@ -54,15 +57,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireDebugAuth(request)
+  if (!auth.authorized) return auth.response
+
   try {
-    // Verify admin authentication
-    const authHeader = request.headers.get("authorization")
-    const adminKey = process.env.DEBUG_ADMIN_KEY
-
-    if (!adminKey || !authHeader || authHeader !== `Bearer ${adminKey}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
     const supabase = await createClient()
 
     // Check current migration status
@@ -73,6 +71,7 @@ export async function POST(request: NextRequest) {
         .length || 0
 
     if (usersNeedingMigration === 0) {
+      logger.info("debug-migration", "No migration needed - all users already migrated")
       return NextResponse.json({
         success: true,
         message: "No migration needed - all users already migrated",
@@ -81,11 +80,13 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    logger.warn("debug-migration", "Starting database migration", { usersNeedingMigration })
+
     // Run migration
     const { data: migratedCount, error } = await supabase.rpc("migrate_user_progress")
 
     if (error) {
-      console.error("[v0] Migration error:", error)
+      logger.error("debug-migration", "Migration failed", { error })
       return NextResponse.json(
         {
           error: "Migration failed",
@@ -100,7 +101,7 @@ export async function POST(request: NextRequest) {
     const successfullyMigrated =
       postMigrationUsers?.filter((u) => u.theme_progress && Object.keys(u.theme_progress).length > 0).length || 0
 
-    console.log("[v0] Progress migration completed:", {
+    logger.info("debug-migration", "Migration completed successfully", {
       migratedCount,
       successfullyMigrated,
       totalUsers: postMigrationUsers?.length || 0,
@@ -114,7 +115,7 @@ export async function POST(request: NextRequest) {
       totalUsers: postMigrationUsers?.length || 0,
     })
   } catch (error) {
-    console.error("[v0] Migration API error:", error)
+    logger.error("debug-migration", "Migration API error", { error })
     return NextResponse.json(
       {
         error: "Internal server error",
