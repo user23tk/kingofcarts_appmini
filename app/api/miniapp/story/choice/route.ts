@@ -28,7 +28,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
-    const rateLimitCheck = await AdvancedRateLimiter.checkRateLimit(userId, undefined, false)
+    // Previously: 2 calls (check without count, then count after success)
+    // Now: 1 call that checks AND counts atomically
+    const rateLimitCheck = await AdvancedRateLimiter.checkRateLimit(userId, undefined, true)
     if (!rateLimitCheck.allowed) {
       logger.warn("miniapp-story-choice", "Rate limit exceeded", { userId, reason: rateLimitCheck.reason })
       return NextResponse.json(
@@ -98,9 +100,6 @@ export async function POST(request: NextRequest) {
     }
 
     await sessionManager.incrementInteractionCount()
-
-    await AdvancedRateLimiter.checkRateLimit(userId, undefined, true)
-    logger.debug("miniapp-story-choice", "Rate limit incremented", { userId })
 
     const nextSceneIndex = sceneIndex + 1
     const isLastScene = nextSceneIndex >= chapter.scenes.length
