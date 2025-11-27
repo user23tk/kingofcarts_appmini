@@ -66,29 +66,165 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid scene" }, { status: 400 })
     }
 
+    // ==========================================
+    // STEP 2: Determina tipo scena
+    // ==========================================
+    const hasChoices = currentScene.choices && currentScene.choices.length > 0
+    const isNarrativeScene = !hasChoices
+
+    logger.debug("miniapp-story-choice", "Scene type analyzed", {
+      sceneIndex,
+      isNarrativeScene,
+      hasChoices,
+      choiceCount: currentScene.choices?.length || 0,
+      receivedChoiceId: choiceId,
+      userId,
+    })
+
+    // ==========================================
+    // STEP 3: Validazione e PP calculation
+    // ==========================================
     let ppDelta = 0
+    let selectedChoice = null
 
     if (choiceId === "continue") {
-      ppDelta = 0
-    } else {
-      const selectedChoice = currentScene.choices?.find((c) => c.id === choiceId)
-      if (!selectedChoice) {
-        logger.warn("miniapp-story-choice", "Invalid choice", {
-          choiceId,
+      // ------------------------------------------------
+      // CASE A: "continue" action
+      // ------------------------------------------------
+
+      if (!isNarrativeScene) {
+        // ERROR: "continue" su scena con scelte
+        logger.warn("miniapp-story-choice", "Invalid continue on choice scene", {
+          userId,
+          theme,
+          chapterNumber,
+          sceneIndex,
           availableChoices: currentScene.choices?.map((c) => c.id),
         })
-        return NextResponse.json({ error: "Invalid choice" }, { status: 400 })
+
+        return NextResponse.json(
+          {
+            error: "This scene requires a choice",
+            code: "INVALID_CONTINUE_ON_CHOICE_SCENE",
+            details: {
+              sceneType: "choice",
+              expectedAction: "select_choice",
+              availableChoices: currentScene.choices?.map((c) => ({
+                id: c.id,
+                label: c.label,
+                pp_delta: c.pp_delta,
+              })),
+            },
+          },
+          { status: 400 },
+        )
       }
 
+      // VALID: "continue" su scena narrativa
+      ppDelta = 0
+
+      logger.debug("miniapp-story-choice", "Valid continue on narrative scene", {
+        userId,
+        sceneIndex,
+        ppDelta: 0,
+      })
+    } else {
+      // ------------------------------------------------
+      // CASE B: Choice action (A, B, C, ...)
+      // ------------------------------------------------
+
+      if (isNarrativeScene) {
+        // ERROR: Choice su scena narrativa
+        logger.warn("miniapp-story-choice", "Invalid choice on narrative scene", {
+          userId,
+          theme,
+          chapterNumber,
+          sceneIndex,
+          attemptedChoiceId: choiceId,
+        })
+
+        return NextResponse.json(
+          {
+            error: "This scene has no choices",
+            code: "INVALID_CHOICE_ON_NARRATIVE_SCENE",
+            details: {
+              sceneType: "narrative",
+              expectedAction: "continue",
+              hint: "Narrative scenes advance automatically. Use 'continue' action.",
+            },
+          },
+          { status: 400 },
+        )
+      }
+
+      // Trova la choice selezionata
+      selectedChoice = currentScene.choices!.find((c) => c.id === choiceId)
+
+      if (!selectedChoice) {
+        // ERROR: Choice ID non esistente
+        logger.warn("miniapp-story-choice", "Invalid choice ID", {
+          userId,
+          choiceId,
+          availableChoices: currentScene.choices?.map((c) => c.id),
+          sceneIndex,
+        })
+
+        return NextResponse.json(
+          {
+            error: "Invalid choice",
+            code: "CHOICE_NOT_FOUND",
+            details: {
+              attemptedChoiceId: choiceId,
+              availableChoices: currentScene.choices?.map((c) => ({
+                id: c.id,
+                label: c.label,
+              })),
+            },
+          },
+          { status: 400 },
+        )
+      }
+
+      // Estrai PP dalla choice
       ppDelta = selectedChoice.pp_delta || 0
 
+      // Valida PP con PPValidator
       const validation_result = PPValidator.validateChoice(currentScene.choices || [], choiceId, ppDelta)
+
       if (!validation_result.isValid) {
-        logger.warn("miniapp-story-choice", "Invalid PP delta detected", { reason: validation_result.reason })
-        return NextResponse.json({ error: "Invalid PP value" }, { status: 400 })
+        // ERROR: PP non valido (cheating attempt?)
+        logger.warn("miniapp-story-choice", "Invalid PP delta detected", {
+          userId,
+          choiceId,
+          ppDelta,
+          reason: validation_result.reason,
+          sceneIndex,
+        })
+
+        return NextResponse.json(
+          {
+            error: "Invalid PP value",
+            code: "INVALID_PP_VALUE",
+            details: {
+              reason: validation_result.reason,
+            },
+          },
+          { status: 400 },
+        )
       }
+
+      // VALID: Choice con PP corretto
+      logger.debug("miniapp-story-choice", "Valid choice with PP", {
+        userId,
+        choiceId,
+        ppDelta,
+        sceneIndex,
+      })
     }
 
+    // ==========================================
+    // STEP 4: Aggiorna sessione
+    // ==========================================
     const updatedSession = sessionManager.updateSession(userId, {
       currentScene: sceneIndex + 1,
       ppAccumulated: session.ppAccumulated + ppDelta,
