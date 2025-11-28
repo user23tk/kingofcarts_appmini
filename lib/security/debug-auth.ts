@@ -1,53 +1,16 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { logger } from "@/lib/debug/logger"
-import { timingSafeEqual } from "crypto"
-
-function safeCompare(a: string, b: string): boolean {
-  try {
-    // First check if both exist
-    if (!a || !b) return false
-
-    // Convert to buffers
-    const bufA = Buffer.from(a)
-    const bufB = Buffer.from(b)
-
-    // If lengths differ, we still need to do a comparison to avoid timing attacks
-    // but we know the result will be false
-    if (bufA.length !== bufB.length) {
-      // Do a dummy comparison to maintain constant time
-      const dummy = Buffer.alloc(bufA.length)
-      timingSafeEqual(bufA, dummy)
-      return false
-    }
-
-    return timingSafeEqual(bufA, bufB)
-  } catch {
-    return false
-  }
-}
+import { verify } from "jsonwebtoken"
 
 /**
  * Centralized authentication middleware for debug endpoints
- * Validates admin key from headers and provides consistent error responses
+ * Validates JWT token from Authorization header or raw admin key
  */
 export async function requireDebugAuth(request: NextRequest): Promise<{
   authorized: boolean
   response?: NextResponse
   adminKey?: string
 }> {
-  const adminKey =
-    request.headers.get("x-admin-key") ||
-    request.headers.get("x-debug-key") ||
-    request.headers.get("authorization")?.replace("Bearer ", "") ||
-    null
-
-  if (!adminKey) {
-    return {
-      authorized: false,
-      response: NextResponse.json({ error: "Unauthorized: Missing admin key" }, { status: 401 }),
-    }
-  }
-
   const validAdminKey = process.env.DEBUG_ADMIN_KEY
 
   if (!validAdminKey) {
@@ -58,35 +21,67 @@ export async function requireDebugAuth(request: NextRequest): Promise<{
     }
   }
 
-  if (!safeCompare(adminKey, validAdminKey)) {
-    // Log failed attempt
-    logger.warn("debug-auth", "Failed debug auth attempt", {
+  const authHeader = request.headers.get("authorization")
+  const xAdminKey = request.headers.get("x-admin-key")
+  const xDebugKey = request.headers.get("x-debug-key")
+
+  // Extract Bearer token if present
+  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : null
+
+  // Try direct admin key first (for backwards compatibility)
+  const directKey = xAdminKey || xDebugKey
+
+  if (directKey === validAdminKey) {
+    logger.info("debug-auth", "Debug endpoint accessed via direct key", {
       ip: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown",
-      userAgent: request.headers.get("user-agent") || "unknown",
       path: request.nextUrl.pathname,
     })
-
     return {
-      authorized: false,
-      response: NextResponse.json({ error: "Unauthorized: Invalid admin key" }, { status: 401 }),
+      authorized: true,
+      adminKey: validAdminKey,
     }
   }
 
-  // Log successful auth
-  logger.info("debug-auth", "Debug endpoint accessed", {
+  if (bearerToken) {
+    try {
+      const decoded = verify(bearerToken, validAdminKey) as { authenticated: boolean; timestamp: number }
+
+      if (decoded.authenticated) {
+        logger.info("debug-auth", "Debug endpoint accessed via JWT", {
+          ip: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown",
+          path: request.nextUrl.pathname,
+        })
+        return {
+          authorized: true,
+          adminKey: validAdminKey,
+        }
+      }
+    } catch (jwtError) {
+      // JWT verification failed, log and continue to failure
+      logger.debug("debug-auth", "JWT verification failed", {
+        error: jwtError instanceof Error ? jwtError.message : "Unknown error",
+      })
+    }
+  }
+
+  // No valid auth found
+  logger.warn("debug-auth", "Failed debug auth attempt", {
     ip: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown",
+    userAgent: request.headers.get("user-agent") || "unknown",
     path: request.nextUrl.pathname,
+    hasAuthHeader: !!authHeader,
+    hasXAdminKey: !!xAdminKey,
+    hasXDebugKey: !!xDebugKey,
   })
 
   return {
-    authorized: true,
-    adminKey,
+    authorized: false,
+    response: NextResponse.json({ error: "Unauthorized: Invalid or missing authentication" }, { status: 401 }),
   }
 }
 
 /**
  * Higher-order function that wraps route handlers with debug authentication
- * Simplifies endpoint protection by automatically applying requireDebugAuth
  */
 export function withDebugAuth(
   handler: (req: NextRequest) => Promise<NextResponse>,
@@ -102,7 +97,6 @@ export function withDebugAuth(
 
 /**
  * Rate limiting for debug endpoints
- * Tracks failed auth attempts per IP
  */
 const failedAttempts = new Map<string, { count: number; resetAt: number }>()
 
@@ -116,11 +110,9 @@ export function checkDebugRateLimit(request: NextRequest): {
   const attempts = failedAttempts.get(ip)
 
   if (attempts) {
-    // Reset if window expired
     if (now > attempts.resetAt) {
       failedAttempts.delete(ip)
     } else if (attempts.count >= 5) {
-      // Max 5 attempts per 5 minutes
       return {
         allowed: false,
         response: NextResponse.json(
@@ -140,7 +132,7 @@ export function checkDebugRateLimit(request: NextRequest): {
 export function recordFailedDebugAuth(request: NextRequest): void {
   const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown"
   const now = Date.now()
-  const resetAt = now + 5 * 60 * 1000 // 5 minutes
+  const resetAt = now + 5 * 60 * 1000
 
   const attempts = failedAttempts.get(ip)
 
