@@ -1,26 +1,41 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { logger } from "@/lib/debug/logger"
+import { requireDebugAuth } from "@/lib/security/debug-auth"
 
 export const dynamic = "force-dynamic"
 
 /**
  * GET /api/debug/giveaway/stats
- * Returns statistics for all giveaways (admin/debug only)
+ * Returns statistics for a specific giveaway or all giveaways (admin/debug only)
  */
 export async function GET(request: NextRequest) {
-  // Check debug auth
-  const debugKey = request.headers.get("x-debug-key")
-  const expectedKey = process.env.DEBUG_ADMIN_KEY
-
-  if (!expectedKey || debugKey !== expectedKey) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const authCheck = await requireDebugAuth(request)
+  if (!authCheck.authorized) {
+    return authCheck.response!
   }
 
   try {
+    const { searchParams } = new URL(request.url)
+    const giveawayId = searchParams.get("giveaway_id")
+
     const supabase = await createClient()
 
-    // Get all giveaways
+    if (giveawayId) {
+      // Get stats for specific giveaway
+      const { data: stats, error } = await supabase.rpc("get_giveaway_stats", {
+        p_giveaway_id: giveawayId,
+      })
+
+      if (error) {
+        logger.error("debug-giveaway-stats", "RPC error", { error: error.message })
+        return NextResponse.json({ error: error.message }, { status: 500 })
+      }
+
+      return NextResponse.json(stats)
+    }
+
+    // Get all giveaways with stats
     const { data: giveaways, error: giveawaysError } = await supabase
       .from("giveaways")
       .select("*")
@@ -32,7 +47,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get stats for each giveaway
-    const statsPromises = giveaways.map(async (giveaway) => {
+    const statsPromises = (giveaways || []).map(async (giveaway) => {
       const { data: stats } = await supabase.rpc("get_giveaway_stats", {
         p_giveaway_id: giveaway.id,
       })
@@ -59,8 +74,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       giveaways: giveawaysWithStats,
       results: results || [],
-      total_giveaways: giveaways.length,
-      active_giveaways: giveaways.filter((g) => g.is_active).length,
+      total_giveaways: giveaways?.length || 0,
+      active_giveaways: giveaways?.filter((g) => g.is_active).length || 0,
     })
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)

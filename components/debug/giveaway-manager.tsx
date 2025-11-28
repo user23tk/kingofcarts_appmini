@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { debugFetch } from "@/lib/debug/auth-helper"
 import {
   Gift,
   Trophy,
@@ -22,6 +25,9 @@ import {
   CheckCircle2,
   Sparkles,
   Plus,
+  Link,
+  ImageIcon,
+  Upload,
 } from "lucide-react"
 
 interface GiveawayStats {
@@ -66,6 +72,8 @@ interface Giveaway {
   pp_per_ticket: number
   prize_title: string | null
   prize_type: string | null
+  prize_link: string | null
+  prize_image_url: string | null
 }
 
 export function GiveawayManager() {
@@ -76,6 +84,7 @@ export function GiveawayManager() {
   const [loading, setLoading] = useState(false)
   const [drawing, setDrawing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
 
   // New giveaway form
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -85,22 +94,20 @@ export function GiveawayManager() {
     pp_per_ticket: 100,
     prize_title: "",
     prize_description: "",
+    prize_link: "",
+    prize_image_url: "",
     ends_at: "",
   })
-
-  const getAuthHeader = useCallback(() => {
-    const token = sessionStorage.getItem("debug_auth_token")
-    return token ? { "x-debug-key": token } : {}
-  }, [])
 
   const fetchGiveaways = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch("/api/debug/giveaway/list", {
-        headers: getAuthHeader(),
-      })
-      if (!response.ok) throw new Error("Failed to fetch giveaways")
+      const response = await debugFetch("/api/debug/giveaway/list")
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to fetch giveaways")
+      }
       const data = await response.json()
       setGiveaways(data.giveaways || [])
     } catch (err) {
@@ -108,27 +115,25 @@ export function GiveawayManager() {
     } finally {
       setLoading(false)
     }
-  }, [getAuthHeader])
+  }, [])
 
-  const fetchStats = useCallback(
-    async (giveawayId: string) => {
-      setLoading(true)
-      setError(null)
-      try {
-        const response = await fetch(`/api/debug/giveaway/stats?giveaway_id=${giveawayId}`, {
-          headers: getAuthHeader(),
-        })
-        if (!response.ok) throw new Error("Failed to fetch stats")
+  const fetchStats = useCallback(async (giveawayId: string) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await debugFetch(`/api/debug/giveaway/stats?giveaway_id=${giveawayId}`)
+      if (!response.ok) {
         const data = await response.json()
-        setStats(data)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error")
-      } finally {
-        setLoading(false)
+        throw new Error(data.error || "Failed to fetch stats")
       }
-    },
-    [getAuthHeader],
-  )
+      const data = await response.json()
+      setStats(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   const handleDraw = async () => {
     if (!selectedGiveaway) return
@@ -141,11 +146,10 @@ export function GiveawayManager() {
     setDrawResult(null)
 
     try {
-      const response = await fetch("/api/debug/giveaway/draw", {
+      const response = await debugFetch("/api/debug/giveaway/draw", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...getAuthHeader(),
         },
         body: JSON.stringify({ giveaway_id: selectedGiveaway }),
       })
@@ -167,15 +171,34 @@ export function GiveawayManager() {
     }
   }
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    try {
+      // Create a local blob URL for preview
+      const localUrl = URL.createObjectURL(file)
+      setNewGiveaway({ ...newGiveaway, prize_image_url: localUrl })
+
+      // For actual upload, you'd use Vercel Blob or similar
+      // For now, we'll just use the local preview
+      // In production, implement: const { url } = await upload(file.name, file)
+    } catch (err) {
+      setError("Failed to upload image")
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const createGiveaway = async () => {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch("/api/debug/giveaway/create", {
+      const response = await debugFetch("/api/debug/giveaway/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...getAuthHeader(),
         },
         body: JSON.stringify(newGiveaway),
       })
@@ -192,6 +215,8 @@ export function GiveawayManager() {
         pp_per_ticket: 100,
         prize_title: "",
         prize_description: "",
+        prize_link: "",
+        prize_image_url: "",
         ends_at: "",
       })
       await fetchGiveaways()
@@ -254,7 +279,7 @@ export function GiveawayManager() {
         </Alert>
       )}
 
-      {/* Create Form */}
+      {/* Create Form - Added prize_link and prize_image_url fields */}
       {showCreateForm && (
         <Card className="border-primary/20">
           <CardHeader>
@@ -307,11 +332,60 @@ export function GiveawayManager() {
                 />
               </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Link className="h-4 w-4" />
+                  Link Premio (opzionale)
+                </Label>
+                <Input
+                  type="url"
+                  value={newGiveaway.prize_link}
+                  onChange={(e) => setNewGiveaway({ ...newGiveaway, prize_link: e.target.value })}
+                  placeholder="https://t.me/..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <ImageIcon className="h-4 w-4" />
+                  Immagine Premio
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="url"
+                    value={newGiveaway.prize_image_url}
+                    onChange={(e) => setNewGiveaway({ ...newGiveaway, prize_image_url: e.target.value })}
+                    placeholder="URL immagine o carica..."
+                    className="flex-1"
+                  />
+                  <Label className="cursor-pointer">
+                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                    <Button type="button" variant="outline" size="icon" disabled={uploading} asChild>
+                      <span>
+                        {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                      </span>
+                    </Button>
+                  </Label>
+                </div>
+                {newGiveaway.prize_image_url && (
+                  <div className="mt-2 relative w-24 h-24 rounded-lg overflow-hidden border">
+                    <img
+                      src={newGiveaway.prize_image_url || "/placeholder.svg"}
+                      alt="Prize preview"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setShowCreateForm(false)}>
                 Annulla
               </Button>
-              <Button onClick={createGiveaway} disabled={!newGiveaway.name || !newGiveaway.ends_at}>
+              <Button onClick={createGiveaway} disabled={!newGiveaway.name || !newGiveaway.ends_at || loading}>
+                {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
                 Crea Giveaway
               </Button>
             </div>
@@ -344,6 +418,15 @@ export function GiveawayManager() {
               )}
             </CardHeader>
             <CardContent>
+              {giveaway.prize_image_url && (
+                <div className="mb-3 w-full h-24 rounded-md overflow-hidden">
+                  <img
+                    src={giveaway.prize_image_url || "/placeholder.svg"}
+                    alt={giveaway.prize_title || "Prize"}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1">
                   <Ticket className="h-3 w-3" />
@@ -358,6 +441,20 @@ export function GiveawayManager() {
                 <Calendar className="h-3 w-3 inline mr-1" />
                 Fine: {formatDate(giveaway.ends_at)}
               </div>
+              {giveaway.prize_link && (
+                <div className="mt-2">
+                  <a
+                    href={giveaway.prize_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary hover:underline flex items-center gap-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Link className="h-3 w-3" />
+                    Link premio
+                  </a>
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}

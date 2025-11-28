@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { logger } from "@/lib/debug/logger"
+import { requireDebugAuth } from "@/lib/security/debug-auth"
 import type { DrawWinnerResponse } from "@/lib/giveaway/types"
 
 export const dynamic = "force-dynamic"
@@ -10,12 +11,9 @@ export const dynamic = "force-dynamic"
  * Draws a winner for a giveaway (admin/debug only)
  */
 export async function POST(request: NextRequest) {
-  // Check debug auth
-  const debugKey = request.headers.get("x-debug-key")
-  const expectedKey = process.env.DEBUG_ADMIN_KEY
-
-  if (!expectedKey || debugKey !== expectedKey) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const authCheck = await requireDebugAuth(request)
+  if (!authCheck.authorized) {
+    return authCheck.response!
   }
 
   try {

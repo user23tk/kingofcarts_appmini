@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { logger } from "@/lib/debug/logger"
+import { requireDebugAuth } from "@/lib/security/debug-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -9,17 +10,15 @@ export const dynamic = "force-dynamic"
  * Creates a new giveaway (admin/debug only)
  */
 export async function POST(request: NextRequest) {
-  // Check debug auth
-  const debugKey = request.headers.get("x-debug-key")
-  const expectedKey = process.env.DEBUG_ADMIN_KEY
-
-  if (!expectedKey || debugKey !== expectedKey) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const authCheck = await requireDebugAuth(request)
+  if (!authCheck.authorized) {
+    return authCheck.response!
   }
 
   try {
     const body = await request.json()
-    const { name, description, pp_per_ticket, prize_title, prize_description, ends_at } = body
+    const { name, description, pp_per_ticket, prize_title, prize_description, prize_link, prize_image_url, ends_at } =
+      body
 
     if (!name) {
       return NextResponse.json({ error: "name is required" }, { status: 400 })
@@ -40,6 +39,8 @@ export async function POST(request: NextRequest) {
         prize_title: prize_title || null,
         prize_description: prize_description || null,
         prize_type: "telegram_gift",
+        prize_link: prize_link || null,
+        prize_image_url: prize_image_url || null,
         starts_at: new Date().toISOString(),
         ends_at: new Date(ends_at).toISOString(),
         is_active: true,
