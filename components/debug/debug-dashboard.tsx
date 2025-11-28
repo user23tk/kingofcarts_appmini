@@ -176,6 +176,8 @@ export function DebugDashboard() {
               { id: "events", tool: "events", label: "Events" },
               { id: "events", tool: "giveaway", label: "Giveaway" },
               { id: "miniapp", tool: "miniapp", label: "Mini App" },
+              { id: "content", tool: "generator", label: "Story Generator" },
+              { id: "content", tool: "import", label: "JSON Import" },
             ].map((item) => (
               <Button
                 key={`${item.id}-${item.tool}`}
