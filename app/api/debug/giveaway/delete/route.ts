@@ -1,31 +1,28 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { requireDebugAuth } from "@/lib/security/debug-auth"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 export async function DELETE(request: NextRequest) {
-  const authError = await requireDebugAuth(request)
-  if (authError) {
-    return authError
-  }
-
-  let giveawayId: string | null = null
-
   try {
+    const authError = await requireDebugAuth(request)
+    if (authError) {
+      return authError
+    }
+
     const { searchParams } = new URL(request.url)
-    giveawayId = searchParams.get("id")
+    const giveawayId = searchParams.get("id")
 
     if (!giveawayId) {
       return NextResponse.json({ error: "Missing giveaway ID" }, { status: 400 })
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
-    // First, delete related entries
+    // Delete related entries first
     const { error: entriesError } = await supabase.from("giveaway_entries").delete().eq("giveaway_id", giveawayId)
 
     if (entriesError) {
       console.error("[giveaway-delete] Error deleting entries:", entriesError)
-      // Continue anyway - entries might not exist
     }
 
     // Delete related results
@@ -33,18 +30,15 @@ export async function DELETE(request: NextRequest) {
 
     if (resultsError) {
       console.error("[giveaway-delete] Error deleting results:", resultsError)
-      // Continue anyway - results might not exist
     }
 
-    // Then delete the giveaway itself
+    // Delete the giveaway itself
     const { data, error: giveawayError } = await supabase.from("giveaways").delete().eq("id", giveawayId).select()
 
     if (giveawayError) {
       console.error("[giveaway-delete] Error deleting giveaway:", giveawayError)
       return NextResponse.json({ error: "Failed to delete giveaway", details: giveawayError.message }, { status: 500 })
     }
-
-    console.log("[giveaway-delete] Successfully deleted giveaway:", giveawayId)
 
     return NextResponse.json({
       success: true,
@@ -58,7 +52,6 @@ export async function DELETE(request: NextRequest) {
       {
         error: "Internal server error",
         details: error instanceof Error ? error.message : "Unknown error",
-        giveaway_id: giveawayId,
       },
       { status: 500 },
     )
