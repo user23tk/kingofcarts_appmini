@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { StoryManager } from "@/lib/story/story-manager"
 import { requireDebugAuth } from "@/lib/security/debug-auth"
+import { logger } from "@/lib/debug/logger"
 
 export const dynamic = "force-dynamic"
 
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
       hasChoices: chapterData.scenes?.some((scene) => scene.choices && scene.choices.length > 0) || false,
     })
   } catch (error) {
-    console.error("[v0] Story test error:", error)
+    logger.error("[test-story] Story test error:", error)
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : "Internal server error",

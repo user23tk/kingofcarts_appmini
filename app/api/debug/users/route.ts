@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { requireDebugAuth, checkDebugRateLimit } from "@/lib/security/debug-auth"
+import { logger } from "@/lib/debug/logger"
 
 export const dynamic = "force-dynamic"
 
@@ -26,11 +27,11 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error
 
-    console.log("[v0] [SECURITY] Users list accessed by admin")
+    logger.info("[users] [SECURITY] Users list accessed by admin")
 
     return NextResponse.json(users || [])
   } catch (error) {
-    console.error("[v0] Debug users error:", error)
+    logger.error("[users] Debug users error:", error)
     return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 })
   }
 }

@@ -1,9 +1,16 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { logger } from "@/lib/debug/logger"
+import { requireDebugAuth } from "@/lib/security/debug-auth"
 
 export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
   try {
+    const authCheck = await requireDebugAuth(request)
+    if (!authCheck.authorized) {
+      return authCheck.response!
+    }
+
     const webhookData = await request.json()
     const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET
 
@@ -29,7 +36,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Webhook simulation failed" }, { status: response.status })
     }
   } catch (error) {
-    console.error("[v0] Webhook simulation error:", error)
+    logger.error("[simulate-webhook] Webhook simulation error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
