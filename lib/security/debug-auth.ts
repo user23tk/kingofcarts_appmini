@@ -2,6 +2,30 @@ import { type NextRequest, NextResponse } from "next/server"
 import { logger } from "@/lib/debug/logger"
 import { timingSafeEqual } from "crypto"
 
+function safeCompare(a: string, b: string): boolean {
+  try {
+    // First check if both exist
+    if (!a || !b) return false
+
+    // Convert to buffers
+    const bufA = Buffer.from(a)
+    const bufB = Buffer.from(b)
+
+    // If lengths differ, we still need to do a comparison to avoid timing attacks
+    // but we know the result will be false
+    if (bufA.length !== bufB.length) {
+      // Do a dummy comparison to maintain constant time
+      const dummy = Buffer.alloc(bufA.length)
+      timingSafeEqual(bufA, dummy)
+      return false
+    }
+
+    return timingSafeEqual(bufA, bufB)
+  } catch {
+    return false
+  }
+}
+
 /**
  * Centralized authentication middleware for debug endpoints
  * Validates admin key from headers and provides consistent error responses
@@ -11,9 +35,11 @@ export async function requireDebugAuth(request: NextRequest): Promise<{
   response?: NextResponse
   adminKey?: string
 }> {
-  // Check for admin key in multiple header formats
   const adminKey =
-    request.headers.get("x-admin-key") || request.headers.get("authorization")?.replace("Bearer ", "") || null
+    request.headers.get("x-admin-key") ||
+    request.headers.get("x-debug-key") ||
+    request.headers.get("authorization")?.replace("Bearer ", "") ||
+    null
 
   if (!adminKey) {
     return {
@@ -32,8 +58,7 @@ export async function requireDebugAuth(request: NextRequest): Promise<{
     }
   }
 
-  // Use timing-safe comparison
-  if (!timingSafeEqual(Buffer.from(adminKey), Buffer.from(validAdminKey))) {
+  if (!safeCompare(adminKey, validAdminKey)) {
     // Log failed attempt
     logger.warn("debug-auth", "Failed debug auth attempt", {
       ip: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown",
