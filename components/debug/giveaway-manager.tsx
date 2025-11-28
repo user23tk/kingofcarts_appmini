@@ -28,6 +28,7 @@ import {
   Link,
   ImageIcon,
   Upload,
+  Trash2,
 } from "lucide-react"
 
 interface GiveawayStats {
@@ -85,6 +86,7 @@ export function GiveawayManager() {
   const [drawing, setDrawing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [deleting, setDeleting] = useState<string | null>(null)
 
   // New giveaway form
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -226,6 +228,43 @@ export function GiveawayManager() {
       setLoading(false)
     }
   }
+
+  const deleteGiveaway = useCallback(
+    async (giveawayId: string) => {
+      if (!confirm("Sei sicuro di voler eliminare questo giveaway? Questa azione non può essere annullata.")) {
+        return
+      }
+
+      setDeleting(giveawayId)
+      setError(null)
+
+      try {
+        const response = await debugFetch(`/api/debug/giveaway/delete?id=${giveawayId}`, {
+          method: "DELETE",
+        })
+
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || "Failed to delete giveaway")
+        }
+
+        // Remove from local state
+        setGiveaways((prev) => prev.filter((g) => g.id !== giveawayId))
+
+        // Clear selection if deleted giveaway was selected
+        if (selectedGiveaway === giveawayId) {
+          setSelectedGiveaway(null)
+          setStats(null)
+          setDrawResult(null)
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to delete giveaway")
+      } finally {
+        setDeleting(null)
+      }
+    },
+    [selectedGiveaway],
+  )
 
   useEffect(() => {
     fetchGiveaways()
@@ -406,9 +445,27 @@ export function GiveawayManager() {
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">{giveaway.name}</CardTitle>
-                <Badge variant={giveaway.is_active ? "default" : "secondary"}>
-                  {giveaway.is_active ? "Attivo" : "Chiuso"}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant={giveaway.is_active ? "default" : "secondary"}>
+                    {giveaway.is_active ? "Attivo" : "Chiuso"}
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      deleteGiveaway(giveaway.id)
+                    }}
+                    disabled={deleting === giveaway.id}
+                  >
+                    {deleting === giveaway.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
               {giveaway.prize_title && (
                 <CardDescription className="flex items-center gap-1">

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
-import { ArrowLeft, Gift, HelpCircle } from "lucide-react"
+import { ArrowLeft, Gift, HelpCircle, Sparkles, Trophy, Ticket, Star, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AnimatedBackground } from "@/components/miniapp/animated-background"
@@ -29,8 +29,8 @@ export default function GiveawayPage() {
     winner,
     isLoading,
     error,
-    useTicket,
-    isUsingTicket,
+    allocateTicket,
+    isAllocatingTicket,
     claimOnboardingBonus,
     isClaimingBonus,
   } = useGiveaway(initData)
@@ -38,7 +38,7 @@ export default function GiveawayPage() {
   const handleUseTicket = async () => {
     hapticFeedback("medium")
     try {
-      const result = await useTicket()
+      const result = await allocateTicket()
       if (result?.success) {
         hapticFeedback("success")
         toast({
@@ -111,6 +111,7 @@ export default function GiveawayPage() {
       <div className="relative min-h-screen pb-20">
         <AnimatedBackground theme="fantasy" intensity="low" variant="menu" />
         <div className="relative z-10 p-4">
+          {/* Header */}
           <div className="mb-6 flex items-center space-x-4">
             <Button
               variant="ghost"
@@ -128,13 +129,134 @@ export default function GiveawayPage() {
             </div>
           </div>
 
-          <Card className="bg-background/80 backdrop-blur-sm">
-            <CardContent className="py-12 text-center">
-              <Gift className="w-16 h-16 mx-auto mb-4 text-muted-foreground/30" />
-              <h3 className="text-lg font-medium mb-2">Nessun Giveaway Attivo</h3>
-              <p className="text-sm text-muted-foreground">Al momento non ci sono contest attivi. Torna presto!</p>
-            </CardContent>
-          </Card>
+          {/* Empty State Hero */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Card className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 backdrop-blur-sm border border-purple-500/20 overflow-hidden">
+              <CardContent className="py-10 text-center relative">
+                {/* Decorative elements */}
+                <div className="absolute top-4 left-4 text-purple-400/20">
+                  <Sparkles className="w-8 h-8" />
+                </div>
+                <div className="absolute bottom-4 right-4 text-indigo-400/20">
+                  <Star className="w-8 h-8" />
+                </div>
+
+                <motion.div
+                  animate={{
+                    y: [0, -10, 0],
+                    rotate: [0, 5, -5, 0],
+                  }}
+                  transition={{
+                    duration: 3,
+                    repeat: Number.POSITIVE_INFINITY,
+                    ease: "easeInOut",
+                  }}
+                >
+                  <Gift className="w-20 h-20 mx-auto mb-6 text-purple-400/60" />
+                </motion.div>
+
+                <h3 className="text-xl font-bold mb-2 text-white">Nessun Giveaway Attivo</h3>
+                <p className="text-sm text-white/60 mb-6 max-w-xs mx-auto">
+                  Al momento non ci sono contest attivi. Nel frattempo, continua a giocare per accumulare PP!
+                </p>
+
+                <Button
+                  onClick={() => {
+                    hapticFeedback("medium")
+                    router.push("/themes")
+                  }}
+                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                >
+                  <Zap className="w-4 h-4 mr-2" />
+                  Gioca Ora
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* How Giveaways Work Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="mt-6"
+          >
+            <Card className="bg-background/80 backdrop-blur-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <HelpCircle className="w-5 h-5 text-primary" />
+                  Come Funzionano i Giveaway
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Step 1 */}
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center border border-amber-500/30">
+                    <Zap className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm">Guadagna PP</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Gioca alle storie interattive e accumula Power Points con le tue scelte
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 2 */}
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-purple-500/20 to-indigo-500/20 flex items-center justify-center border border-purple-500/30">
+                    <Ticket className="w-5 h-5 text-purple-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm">Converti in Ticket</h4>
+                    <p className="text-xs text-muted-foreground">
+                      I tuoi PP diventano ticket per partecipare. Di solito 100 PP = 1 Ticket
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 3 */}
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center border border-emerald-500/30">
+                    <Trophy className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm">Vinci Premi</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Partecipa all'estrazione e vinci premi esclusivi come Telegram Gifts e Premium
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Tips Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="mt-4"
+          >
+            <Card className="bg-gradient-to-r from-amber-900/20 to-orange-900/20 backdrop-blur-sm border border-amber-500/20">
+              <CardContent className="py-4">
+                <div className="flex items-start gap-3">
+                  <Sparkles className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-sm text-amber-200">Suggerimento</h4>
+                    <p className="text-xs text-amber-100/70 mt-1">
+                      Quando un nuovo giveaway sarà disponibile, vedrai una notifica. Più PP accumuli ora, più ticket
+                      avrai per partecipare!
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
       </div>
     )
@@ -206,7 +328,7 @@ export default function GiveawayPage() {
             <TicketBalance
               userData={userData}
               onUseTicket={handleUseTicket}
-              isLoading={isUsingTicket}
+              isLoading={isAllocatingTicket}
               disabled={!giveaway.is_active || giveaway.has_ended || !!winner}
             />
           </motion.div>

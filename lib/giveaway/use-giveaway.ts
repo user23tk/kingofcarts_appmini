@@ -15,22 +15,22 @@ const fetcher = async (url: string, initData: string) => {
 }
 
 export function useGiveaway(initData: string | null) {
-  const [isUsingTicket, setIsUsingTicket] = useState(false)
+  const [isAllocatingTicket, setIsAllocatingTicket] = useState(false)
   const [isClaimingBonus, setIsClaimingBonus] = useState(false)
 
   const { data, error, isLoading, mutate } = useSWR<GiveawayWithUserData>(
     initData ? ["/api/miniapp/giveaway/active", initData] : null,
     ([url, init]) => fetcher(url, init),
     {
-      refreshInterval: 30000, // Refresh every 30 seconds
+      refreshInterval: 30000,
       revalidateOnFocus: true,
     },
   )
 
-  const useTicket = useCallback(async () => {
+  const allocateTicket = useCallback(async () => {
     if (!data?.giveaway?.id || !initData) return null
 
-    setIsUsingTicket(true)
+    setIsAllocatingTicket(true)
     try {
       const response = await fetch("/api/miniapp/giveaway/enter", {
         method: "POST",
@@ -47,12 +47,10 @@ export function useGiveaway(initData: string | null) {
         throw new Error(result.error || "Failed to allocate ticket")
       }
 
-      // Refresh data
       await mutate()
-
       return result
     } finally {
-      setIsUsingTicket(false)
+      setIsAllocatingTicket(false)
     }
   }, [data?.giveaway?.id, initData, mutate])
 
@@ -73,9 +71,7 @@ export function useGiveaway(initData: string | null) {
         throw new Error(result.error || "Failed to claim bonus")
       }
 
-      // Refresh giveaway data to update PP count
       await mutate()
-
       return result
     } finally {
       setIsClaimingBonus(false)
@@ -88,8 +84,8 @@ export function useGiveaway(initData: string | null) {
     winner: data?.winner || null,
     isLoading,
     error,
-    useTicket,
-    isUsingTicket,
+    allocateTicket,
+    isAllocatingTicket,
     claimOnboardingBonus,
     isClaimingBonus,
     refresh: mutate,
