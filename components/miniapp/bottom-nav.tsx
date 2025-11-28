@@ -15,7 +15,7 @@ const NAV_ITEMS: NavItem[] = [
   { path: "/", icon: "🏠", label: "Home", activeIcon: "🏠" },
   { path: "/themes", icon: "📖", label: "Storia", activeIcon: "📖" },
   { path: "/leaderboard", icon: "🏆", label: "Classifica", activeIcon: "🏆" },
-  { path: "/profile", icon: "👤", label: "Profilo", activeIcon: "👤" },
+  { path: "/giveaway", icon: "🎁", label: "Giveaway", activeIcon: "🎁" },
 ]
 
 export function BottomNav() {

@@ -77,11 +77,12 @@ export class PPValidator {
     const supabase = await createClient()
 
     try {
-      // Verifica PP guadagnati nell'ultima ora
+      // Verifica PP guadagnati nell'ultima ora (excluding onboarding bonus)
       const { data: hourlyData } = await supabase
         .from("pp_audit")
         .select("pp_gained")
         .eq("user_id", userId)
+        .neq("theme", "ONBOARDING_BONUS") // Exclude bonus from hourly limit
         .gte("created_at", new Date(Date.now() - 60 * 60 * 1000).toISOString())
 
       const hourlyPP = hourlyData?.reduce((sum, record) => sum + record.pp_gained, 0) || 0
@@ -93,11 +94,12 @@ export class PPValidator {
         }
       }
 
-      // Verifica PP guadagnati nelle ultime 24 ore
+      // Verifica PP guadagnati nelle ultime 24 ore (excluding onboarding bonus)
       const { data: dailyData } = await supabase
         .from("pp_audit")
         .select("pp_gained")
         .eq("user_id", userId)
+        .neq("theme", "ONBOARDING_BONUS") // Exclude bonus from daily limit
         .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
 
       const dailyPP = dailyData?.reduce((sum, record) => sum + record.pp_gained, 0) || 0

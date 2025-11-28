@@ -19,6 +19,7 @@ import { StatsValidator } from "./stats-validator"
 import { MiniAppTester } from "./miniapp-tester"
 import { RankDebugger } from "./rank-debugger"
 import { UserValidator } from "./user-validator"
+import { GiveawayManager } from "./giveaway-manager"
 import {
   Activity,
   Database,
@@ -35,6 +36,7 @@ import {
   Smartphone,
   Target,
   User,
+  Gift,
 } from "lucide-react"
 
 export function DebugDashboard() {
@@ -75,7 +77,7 @@ export function DebugDashboard() {
       <RateLimitStatus />
 
       <Tabs defaultValue="stats" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-14">
+        <TabsList className="grid w-full grid-cols-15">
           <TabsTrigger value="stats" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
             Statistics
@@ -131,6 +133,10 @@ export function DebugDashboard() {
           <TabsTrigger value="user-validator" className="flex items-center gap-2">
             <User className="h-4 w-4" />
             User Validator
+          </TabsTrigger>
+          <TabsTrigger value="giveaway" className="flex items-center gap-2">
+            <Gift className="h-4 w-4" />
+            Giveaway
           </TabsTrigger>
         </TabsList>
 
@@ -188,6 +194,10 @@ export function DebugDashboard() {
 
         <TabsContent value="user-validator" className="space-y-4">
           <UserValidator />
+        </TabsContent>
+
+        <TabsContent value="giveaway" className="space-y-4">
+          <GiveawayManager />
         </TabsContent>
       </Tabs>
     </div>
