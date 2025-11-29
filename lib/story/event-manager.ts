@@ -50,7 +50,7 @@ export class EventManager {
    */
   static async getEventLeaderboard(themeKey: string, limit = 100) {
     const supabase = getAdminClient()
-    const { data, error } = await supabase.rpc("get_event_leaderboard", {
+    const { data, error } = await supabase.rpc("get_event_leaderboard_v2", {
       p_theme: themeKey,
       p_limit: limit,
     })
@@ -68,7 +68,7 @@ export class EventManager {
    */
   static async getUserEventRank(userId: string, themeKey: string) {
     const supabase = getAdminClient()
-    const { data, error } = await supabase.rpc("get_user_event_rank", {
+    const { data, error } = await supabase.rpc("get_user_event_stats", {
       p_user_id: userId,
       p_theme: themeKey,
     })
@@ -106,7 +106,8 @@ export class EventManager {
   /**
    * Update event leaderboard when user completes a chapter in an event
    * Uses atomic transaction to prevent race conditions
-   * Simplified to use theme name directly instead of theme_id
+   *
+   * Added detailed logging and error handling for debugging
    */
   static async updateEventLeaderboard(userId: string, themeKey: string, ppGained: number): Promise<void> {
     const supabase = getAdminClient()
@@ -118,6 +119,8 @@ export class EventManager {
       return
     }
 
+    console.log(`[v0] [EVENT] Updating event leaderboard: user=${userId}, theme=${themeKey}, pp=${ppGained}`)
+
     const { error } = await supabase.rpc("update_event_leaderboard_atomic", {
       p_user_id: userId,
       p_theme: themeKey,
@@ -125,9 +128,32 @@ export class EventManager {
     })
 
     if (error) {
-      console.error("[v0] Error updating event leaderboard:", error)
+      console.error("[v0] [EVENT] Error updating event leaderboard:", error)
+      console.error("[v0] [EVENT] Error details:", {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      })
+      // Don't throw - we want to log but not break the main flow
     } else {
-      console.log(`[v0] [PP UPDATE] Updated event leaderboard for theme ${themeKey}`)
+      console.log(`[v0] [EVENT] Successfully updated event leaderboard for theme ${themeKey}`)
+
+      // Verify the update
+      const { data: verifyData, error: verifyError } = await supabase
+        .from("event_leaderboard")
+        .select("total_pp, chapters_completed")
+        .eq("user_id", userId)
+        .eq("theme", themeKey)
+        .single()
+
+      if (verifyError) {
+        console.warn(`[v0] [EVENT] Could not verify event leaderboard update:`, verifyError)
+      } else {
+        console.log(
+          `[v0] [EVENT] Verified: user ${userId} now has ${verifyData?.total_pp} PP, ${verifyData?.chapters_completed} chapters in event ${themeKey}`,
+        )
+      }
     }
   }
 }
