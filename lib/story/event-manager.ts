@@ -1,4 +1,4 @@
-import { getAdminClient } from "@/lib/supabase/admin-singleton"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 export class EventManager {
   /**
@@ -6,9 +6,9 @@ export class EventManager {
    * Uses the consolidated get_active_event RPC
    */
   static async getActiveEvent() {
-    const supabase = getAdminClient()
+    const supabase = createAdminClient()
 
-    console.log("[v0] [EventManager] getActiveEvent called")
+    console.log("[v0] [EventManager] getActiveEvent called - using per-request client")
 
     // First deactivate any expired events
     const { error: deactivateError } = await supabase.rpc("deactivate_expired_events")
@@ -19,6 +19,7 @@ export class EventManager {
     // Then get the active event using consolidated RPC
     const { data, error } = await supabase.rpc("get_active_event")
 
+    console.info("[v0] get_active_event rows:", Array.isArray(data) ? data.length : -1)
     console.log("[v0] [EventManager] get_active_event RPC response:", {
       data,
       dataLength: data?.length,
@@ -59,7 +60,7 @@ export class EventManager {
    * BE-01: Added full time window validation (start_date and end_date)
    */
   static async isEventTheme(themeKey: string): Promise<boolean> {
-    const supabase = getAdminClient()
+    const supabase = createAdminClient()
 
     const { data, error } = await supabase
       .from("themes")
@@ -96,7 +97,7 @@ export class EventManager {
    * Get event leaderboard for a specific event
    */
   static async getEventLeaderboard(themeKey: string, limit = 100) {
-    const supabase = getAdminClient()
+    const supabase = createAdminClient()
     const { data, error } = await supabase.rpc("get_event_leaderboard_v2", {
       p_theme: themeKey,
       p_limit: limit,
@@ -114,7 +115,7 @@ export class EventManager {
    * Get user's rank in event leaderboard
    */
   static async getUserEventRank(userId: string, themeKey: string) {
-    const supabase = getAdminClient()
+    const supabase = createAdminClient()
     const { data, error } = await supabase.rpc("get_user_event_stats", {
       p_user_id: userId,
       p_theme: themeKey,
@@ -133,7 +134,7 @@ export class EventManager {
    * BE-02: Added full time window validation for multiplier
    */
   static async getPPMultiplier(themeKey: string): Promise<number> {
-    const supabase = getAdminClient()
+    const supabase = createAdminClient()
     const { data: theme } = await supabase
       .from("themes")
       .select("pp_multiplier, is_event, is_active, event_start_date, event_end_date")
@@ -163,7 +164,7 @@ export class EventManager {
    * Uses atomic transaction to prevent race conditions
    */
   static async updateEventLeaderboard(userId: string, themeKey: string, ppGained: number): Promise<void> {
-    const supabase = getAdminClient()
+    const supabase = createAdminClient()
 
     console.log(`[v0] [EVENT] updateEventLeaderboard called:`, {
       userId,

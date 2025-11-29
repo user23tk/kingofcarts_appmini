@@ -7,6 +7,10 @@ export const runtime = "nodejs"
 export async function GET() {
   try {
     console.log("[v0] [/api/leaderboard/event] Starting request")
+    console.log(
+      "[v0] [/api/leaderboard/event] SUPABASE_URL:",
+      process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 30) + "...",
+    )
 
     // This ensures we use the same code path as the dashboard
     const activeEvent = await EventManager.getActiveEvent()
@@ -14,7 +18,8 @@ export async function GET() {
     console.log("[v0] [/api/leaderboard/event] activeEvent result:", activeEvent ? "found" : "null")
 
     if (!activeEvent) {
-      console.log("[v0] [/api/leaderboard/event] No active event found, returning empty response")
+      console.log("[v0] [/api/leaderboard/event] No active event found")
+      console.log("[v0] [/api/leaderboard/event] Check: is get_active_event RPC returning data in DB?")
       return NextResponse.json(
         {
           activeEvent: null,
