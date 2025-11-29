@@ -178,16 +178,30 @@ export function GiveawayManager() {
     if (!file) return
 
     setUploading(true)
-    try {
-      // Create a local blob URL for preview
-      const localUrl = URL.createObjectURL(file)
-      setNewGiveaway({ ...newGiveaway, prize_image_url: localUrl })
+    setError(null)
 
-      // For actual upload, you'd use Vercel Blob or similar
-      // For now, we'll just use the local preview
-      // In production, implement: const { url } = await upload(file.name, file)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const response = await debugFetch("/api/debug/upload", {
+        method: "POST",
+        headers: {
+          // Don't set Content-Type for FormData - browser will set it with boundary
+        },
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to upload image")
+      }
+
+      // Use the public URL from Vercel Blob
+      setNewGiveaway({ ...newGiveaway, prize_image_url: data.url })
     } catch (err) {
-      setError("Failed to upload image")
+      setError(err instanceof Error ? err.message : "Failed to upload image")
     } finally {
       setUploading(false)
     }
