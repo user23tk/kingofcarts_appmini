@@ -3,22 +3,22 @@ import { getAdminClient } from "@/lib/supabase/admin-singleton"
 export class EventManager {
   /**
    * Get the currently active event contest (with expiration check)
+   * Uses get_event_for_leaderboard which supports 7-day post-event visibility
    */
   static async getActiveEvent() {
     const supabase = getAdminClient()
 
     await supabase.rpc("deactivate_expired_events")
 
-    // Then get the active event
-    const { data, error } = await supabase.rpc("get_active_event")
+    // and supports 7-day post-event visibility window
+    const { data, error } = await supabase.rpc("get_event_for_leaderboard")
 
     if (error) {
-      console.error("[v0] Error getting active event:", error)
+      console.error("[EventManager] Error getting active event:", error)
       return null
     }
 
-    // Return first event or null
-    return data && data.length > 0 ? data[0] : null
+    return data || null
   }
 
   /**
