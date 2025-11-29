@@ -3,13 +3,15 @@ import { getAdminClient } from "@/lib/supabase/admin-singleton"
 export class EventManager {
   /**
    * Get the currently active event contest (with expiration check)
+   * Uses the consolidated get_active_event RPC
    */
   static async getActiveEvent() {
     const supabase = getAdminClient()
 
+    // First deactivate any expired events
     await supabase.rpc("deactivate_expired_events")
 
-    // Then get the active event
+    // Then get the active event using consolidated RPC
     const { data, error } = await supabase.rpc("get_active_event")
 
     if (error) {
@@ -22,14 +24,15 @@ export class EventManager {
   }
 
   /**
-   * Check if a theme is an event contest
+   * Check if a theme is an active event contest
+   * BE-01: Added full time window validation (start_date and end_date)
    */
   static async isEventTheme(themeKey: string): Promise<boolean> {
     const supabase = getAdminClient()
 
     const { data, error } = await supabase
       .from("themes")
-      .select("is_event, is_active, event_end_date")
+      .select("is_event, is_active, event_start_date, event_end_date")
       .eq("name", themeKey)
       .single()
 
@@ -38,11 +41,24 @@ export class EventManager {
       return false
     }
 
-    // Check if event is active and not expired
-    const isActive = data.is_event && data.is_active
-    const isNotExpired = !data.event_end_date || new Date(data.event_end_date) > new Date()
+    // Must be marked as event and active
+    if (!data.is_event || !data.is_active) {
+      return false
+    }
 
-    return isActive && isNotExpired
+    const now = new Date()
+
+    if (data.event_start_date && new Date(data.event_start_date) > now) {
+      console.log(`[v0] Event ${themeKey} has not started yet (starts: ${data.event_start_date})`)
+      return false
+    }
+
+    if (data.event_end_date && new Date(data.event_end_date) <= now) {
+      console.log(`[v0] Event ${themeKey} has expired (ended: ${data.event_end_date})`)
+      return false
+    }
+
+    return true
   }
 
   /**
@@ -82,21 +98,29 @@ export class EventManager {
   }
 
   /**
-   * Get PP multiplier for a theme (returns 1.0 if not an event)
+   * Get PP multiplier for a theme (returns 1.0 if not an active event)
+   * BE-02: Added full time window validation for multiplier
    */
   static async getPPMultiplier(themeKey: string): Promise<number> {
     const supabase = getAdminClient()
     const { data: theme } = await supabase
       .from("themes")
-      .select("pp_multiplier, is_event, is_active, event_end_date")
+      .select("pp_multiplier, is_event, is_active, event_start_date, event_end_date")
       .eq("name", themeKey)
       .single()
 
+    // No theme found or not an event
     if (!theme || !theme.is_event || !theme.is_active) {
       return 1.0
     }
 
-    if (theme.event_end_date && new Date(theme.event_end_date) <= new Date()) {
+    const now = new Date()
+
+    if (theme.event_start_date && new Date(theme.event_start_date) > now) {
+      return 1.0
+    }
+
+    if (theme.event_end_date && new Date(theme.event_end_date) <= now) {
       return 1.0
     }
 
@@ -106,13 +130,11 @@ export class EventManager {
   /**
    * Update event leaderboard when user completes a chapter in an event
    * Uses atomic transaction to prevent race conditions
-   *
-   * Added detailed logging and error handling for debugging
    */
   static async updateEventLeaderboard(userId: string, themeKey: string, ppGained: number): Promise<void> {
     const supabase = getAdminClient()
 
-    // Check if theme is an active event
+    // Check if theme is an active event (with time window validation)
     const isEvent = await this.isEventTheme(themeKey)
     if (!isEvent) {
       console.log("[v0] Theme is not an active event, skipping event leaderboard update")
@@ -135,7 +157,6 @@ export class EventManager {
         details: error.details,
         hint: error.hint,
       })
-      // Don't throw - we want to log but not break the main flow
     } else {
       console.log(`[v0] [EVENT] Successfully updated event leaderboard for theme ${themeKey}`)
 

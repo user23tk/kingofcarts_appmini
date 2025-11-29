@@ -31,28 +31,34 @@ export async function GET() {
 
     const themeKey = activeEvent.name
 
-    const players = await EventLeaderboardManager.getEventLeaderboard(themeKey, 100)
-
-    console.log("[v0] Event leaderboard players count:", players.length)
+    let players: any[] = []
+    try {
+      players = await EventLeaderboardManager.getEventLeaderboard(themeKey, 100)
+      console.log("[v0] Event leaderboard players count:", players.length)
+    } catch (leaderboardError) {
+      console.error("[v0] Error fetching event leaderboard, returning empty array:", leaderboardError)
+      // Continue with empty players array - don't fail the whole request
+      players = []
+    }
 
     return NextResponse.json(
       {
         activeEvent: {
           id: activeEvent.id,
           theme_key: themeKey,
-          event_name: activeEvent.name || activeEvent.title || themeKey,
-          event_emoji: activeEvent.emoji || activeEvent.event_emoji || "🎮",
+          event_name: activeEvent.title || activeEvent.name || themeKey,
+          event_emoji: activeEvent.event_emoji || activeEvent.emoji || "🎮",
           pp_multiplier: activeEvent.pp_multiplier || 1.0,
-          event_end_date: activeEvent.event_end_date || activeEvent.end_date,
+          event_end_date: activeEvent.event_end_date,
           description: activeEvent.description,
         },
         players: players.map((player) => ({
           rank: player.rank,
-          user_id: player.userId,
-          first_name: player.firstName,
-          total_pp: player.totalPp,
-          chapters_completed: player.chaptersCompleted,
-          last_updated: player.lastUpdated,
+          user_id: player.userId || player.user_id,
+          first_name: player.firstName || player.first_name,
+          total_pp: player.totalPp || player.total_pp,
+          chapters_completed: player.chaptersCompleted || player.chapters_completed,
+          last_updated: player.lastUpdated || player.last_updated,
         })),
       },
       {
@@ -67,10 +73,18 @@ export async function GET() {
     console.error("[v0] Error fetching event leaderboard:", error)
     return NextResponse.json(
       {
-        error: "Failed to fetch event leaderboard",
-        details: error instanceof Error ? error.message : "Unknown error",
+        activeEvent: null,
+        players: [],
+        error: "Failed to fetch event data",
       },
-      { status: 500 },
+      {
+        status: 200, // Return 200 so UI can handle gracefully
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      },
     )
   }
 }

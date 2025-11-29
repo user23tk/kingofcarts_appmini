@@ -7,11 +7,13 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
 
-    // Fetch themes with chapter counts using aggregation
+    await supabase.rpc("deactivate_expired_events")
+
     const { data: themesData, error: themesError } = await supabase
       .from("themes")
-      .select("id, name, title, description, emoji, is_active, total_chapters")
+      .select("id, name, title, description, emoji, is_active, total_chapters, is_event")
       .eq("is_active", true)
+      .eq("is_event", false) // Exclude event themes from story list
       .order("name")
 
     if (themesError) {
@@ -33,7 +35,7 @@ export async function GET(request: NextRequest) {
         }
 
         return {
-          id: theme.name, // Use theme.name as the ID for routing
+          id: theme.name,
           name: theme.title || theme.name,
           description: theme.description || "",
           emoji: theme.emoji || "📖",
