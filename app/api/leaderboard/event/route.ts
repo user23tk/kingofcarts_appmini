@@ -1,17 +1,20 @@
 import { NextResponse } from "next/server"
-import { EventLeaderboardManager } from "@/lib/leaderboard/event-leaderboard-manager"
+import { EventManager } from "@/lib/story/event-manager"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
 
 export async function GET() {
   try {
-    console.log("[v0] Fetching active event and leaderboard")
+    console.log("[v0] [/api/leaderboard/event] Starting request")
 
-    const activeEvent = await EventLeaderboardManager.getActiveEvent()
+    // This ensures we use the same code path as the dashboard
+    const activeEvent = await EventManager.getActiveEvent()
+
+    console.log("[v0] [/api/leaderboard/event] activeEvent result:", activeEvent ? "found" : "null")
 
     if (!activeEvent) {
-      console.log("[v0] No active event found")
+      console.log("[v0] [/api/leaderboard/event] No active event found, returning empty response")
       return NextResponse.json(
         {
           activeEvent: null,
@@ -27,17 +30,20 @@ export async function GET() {
       )
     }
 
-    console.log("[v0] Active event found:", activeEvent)
+    console.log("[v0] [/api/leaderboard/event] Active event found:", {
+      id: activeEvent.id,
+      name: activeEvent.name,
+      title: activeEvent.title,
+    })
 
     const themeKey = activeEvent.name
 
     let players: any[] = []
     try {
-      players = await EventLeaderboardManager.getEventLeaderboard(themeKey, 100)
-      console.log("[v0] Event leaderboard players count:", players.length)
+      players = await EventManager.getEventLeaderboard(themeKey, 100)
+      console.log("[v0] [/api/leaderboard/event] Event leaderboard players count:", players.length)
     } catch (leaderboardError) {
-      console.error("[v0] Error fetching event leaderboard, returning empty array:", leaderboardError)
-      // Continue with empty players array - don't fail the whole request
+      console.error("[v0] [/api/leaderboard/event] Error fetching event leaderboard:", leaderboardError)
       players = []
     }
 
@@ -52,13 +58,13 @@ export async function GET() {
           event_end_date: activeEvent.event_end_date,
           description: activeEvent.description,
         },
-        players: players.map((player) => ({
+        players: players.map((player: any) => ({
           rank: player.rank,
-          user_id: player.userId || player.user_id,
-          first_name: player.firstName || player.first_name,
-          total_pp: player.totalPp || player.total_pp,
-          chapters_completed: player.chaptersCompleted || player.chapters_completed,
-          last_updated: player.lastUpdated || player.last_updated,
+          user_id: player.user_id,
+          first_name: player.first_name || player.username || "Anonymous",
+          total_pp: player.total_pp,
+          chapters_completed: player.chapters_completed,
+          last_updated: player.last_updated,
         })),
       },
       {
@@ -70,7 +76,7 @@ export async function GET() {
       },
     )
   } catch (error) {
-    console.error("[v0] Error fetching event leaderboard:", error)
+    console.error("[v0] [/api/leaderboard/event] Error:", error)
     return NextResponse.json(
       {
         activeEvent: null,
@@ -78,7 +84,7 @@ export async function GET() {
         error: "Failed to fetch event data",
       },
       {
-        status: 200, // Return 200 so UI can handle gracefully
+        status: 200,
         headers: {
           "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
           Pragma: "no-cache",
