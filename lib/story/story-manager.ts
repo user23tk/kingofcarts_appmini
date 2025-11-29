@@ -468,4 +468,19 @@ export class StoryManager {
 
     return progress
   }
+
+  async getThemeProgress(userId: string, theme: string): Promise<ThemeProgress> {
+    const allProgress = await this.getAllThemesProgress(userId)
+
+    if (allProgress[theme]) {
+      return allProgress[theme]
+    }
+
+    // Return default progress if theme not found
+    return {
+      current_chapter: 1,
+      completed: false,
+      last_interaction: new Date().toISOString(),
+    }
+  }
 }
