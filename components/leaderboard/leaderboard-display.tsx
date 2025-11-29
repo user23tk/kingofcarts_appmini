@@ -5,14 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Trophy, Medal, Award, RefreshCw, Flame, Clock } from "lucide-react"
+import { Trophy, Medal, Award, RefreshCw, Flame } from "lucide-react"
 import type { LeaderboardEntry } from "@/lib/leaderboard/leaderboard-manager"
 
 interface EventLeaderboardEntry {
   rank: number
   user_id: string
   first_name: string
-  total_pp: number
+  total_pp: number // Changed from total_event_pp to total_pp to match API response
   chapters_completed?: number
   last_updated: string
 }
@@ -25,8 +25,6 @@ interface ActiveEvent {
   pp_multiplier: number
 }
 
-type EventStatus = "active" | "closed_visible" | null
-
 export function LeaderboardDisplay() {
   const [players, setPlayers] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -37,8 +35,6 @@ export function LeaderboardDisplay() {
   const [activeEvent, setActiveEvent] = useState<ActiveEvent | null>(null)
   const [eventPlayers, setEventPlayers] = useState<EventLeaderboardEntry[]>([])
   const [eventLoading, setEventLoading] = useState(false)
-  const [eventStatus, setEventStatus] = useState<EventStatus>(null)
-  const [visibilityEndDate, setVisibilityEndDate] = useState<string | null>(null)
 
   const fetchLeaderboard = async () => {
     try {
@@ -80,8 +76,6 @@ export function LeaderboardDisplay() {
       if (!eventResponse.ok) {
         setActiveEvent(null)
         setEventPlayers([])
-        setEventStatus(null)
-        setVisibilityEndDate(null)
         return
       }
 
@@ -90,20 +84,14 @@ export function LeaderboardDisplay() {
       if (eventData.activeEvent) {
         setActiveEvent(eventData.activeEvent)
         setEventPlayers(eventData.players || [])
-        setEventStatus(eventData.status || "active")
-        setVisibilityEndDate(eventData.visibilityEndDate || null)
       } else {
         setActiveEvent(null)
         setEventPlayers([])
-        setEventStatus(null)
-        setVisibilityEndDate(null)
       }
     } catch (err) {
       console.error("[v0] [LEADERBOARD] Event fetch error:", err)
       setActiveEvent(null)
       setEventPlayers([])
-      setEventStatus(null)
-      setVisibilityEndDate(null)
     } finally {
       setEventLoading(false)
     }
@@ -142,11 +130,6 @@ export function LeaderboardDisplay() {
   const formatEventEndDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" })
-  }
-
-  const formatVisibilityEndDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString("it-IT", { day: "numeric", month: "long" })
   }
 
   if (loading) {
@@ -222,9 +205,6 @@ export function LeaderboardDisplay() {
           >
             <Flame className="h-4 w-4 mr-2" />
             {activeEvent.event_emoji} Contest
-            {eventStatus === "closed_visible" && (
-              <Badge className="ml-2 bg-orange-500/30 text-orange-100 border-orange-500/50 text-xs">Terminato</Badge>
-            )}
           </Button>
         </div>
       )}
@@ -315,16 +295,6 @@ export function LeaderboardDisplay() {
         </>
       ) : (
         <>
-          {eventStatus === "closed_visible" && (
-            <Alert className="bg-orange-500/20 border-orange-500/30 backdrop-blur-sm">
-              <Clock className="h-4 w-4 text-orange-400" />
-              <AlertDescription className="text-white ml-2">
-                <strong>Evento terminato.</strong> La classifica è consultabile fino al{" "}
-                {visibilityEndDate && formatVisibilityEndDate(visibilityEndDate)}.
-              </AlertDescription>
-            </Alert>
-          )}
-
           <Card className="bg-white/10 backdrop-blur-sm border-white/20">
             <CardContent className="p-6">
               <div className="text-center space-y-3">
@@ -332,29 +302,15 @@ export function LeaderboardDisplay() {
                 <h1 className="text-4xl font-bold text-white uppercase tracking-wide">
                   Contest {activeEvent?.event_name}
                 </h1>
-                {eventStatus === "active" ? (
-                  <>
-                    <div className="flex items-center justify-center gap-4 text-white/90">
-                      <div className="flex items-center gap-2">
-                        <Flame className="h-5 w-5 text-orange-400" />
-                        <span className="text-lg font-semibold">Moltiplicatore: {activeEvent?.pp_multiplier}x PP</span>
-                      </div>
-                    </div>
-                    <p className="text-white/70 text-sm">
-                      Termina il: <strong>{activeEvent && formatEventEndDate(activeEvent.event_end_date)}</strong>
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <Badge className="bg-orange-500/30 text-orange-100 border-orange-500/50">
-                      <Clock className="h-3 w-3 mr-1" />
-                      Evento Concluso
-                    </Badge>
-                    <p className="text-white/70 text-sm">
-                      Terminato il: <strong>{activeEvent && formatEventEndDate(activeEvent.event_end_date)}</strong>
-                    </p>
-                  </>
-                )}
+                <div className="flex items-center justify-center gap-4 text-white/90">
+                  <div className="flex items-center gap-2">
+                    <Flame className="h-5 w-5 text-orange-400" />
+                    <span className="text-lg font-semibold">Moltiplicatore: {activeEvent?.pp_multiplier}x PP</span>
+                  </div>
+                </div>
+                <p className="text-white/70 text-sm">
+                  Termina il: <strong>{activeEvent && formatEventEndDate(activeEvent.event_end_date)}</strong>
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -363,7 +319,7 @@ export function LeaderboardDisplay() {
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-white">
                 <Trophy className="h-5 w-5" />
-                {eventStatus === "active" ? "Classifica Contest" : "Classifica Finale"}
+                Classifica Contest
               </CardTitle>
               <div className="flex items-center gap-2">
                 <Button
@@ -392,11 +348,7 @@ export function LeaderboardDisplay() {
               ) : eventPlayers.length === 0 ? (
                 <div className="text-center py-8">
                   <Flame className="h-12 w-12 mx-auto mb-4 text-orange-400/50" />
-                  <p className="text-white/70">
-                    {eventStatus === "active"
-                      ? "Nessun partecipante ancora. Sii il primo a partecipare al contest!"
-                      : "Nessun partecipante ha completato l'evento."}
-                  </p>
+                  <p className="text-white/70">Nessun partecipante ancora. Sii il primo a partecipare al contest!</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -444,35 +396,16 @@ export function LeaderboardDisplay() {
           <Card className="bg-white/10 backdrop-blur-sm border-white/20">
             <CardContent className="p-4">
               <div className="text-sm text-white/80 space-y-2">
-                {eventStatus === "active" ? (
-                  <>
-                    <p>
-                      <strong className="text-white">Come funziona il Contest:</strong>
-                    </p>
-                    <p>• Completa i capitoli del tema contest per guadagnare PP</p>
-                    <p>• I PP sono moltiplicati per {activeEvent?.pp_multiplier}x durante l'evento</p>
-                    <p>• La classifica è separata da quella generale</p>
-                    <p>• Il contest termina il {activeEvent && formatEventEndDate(activeEvent.event_end_date)}</p>
-                    <p className="mt-4">
-                      <strong className="text-white">Partecipa ora!</strong> Seleziona il tema contest su Telegram!
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p>
-                      <strong className="text-white">Evento Concluso</strong>
-                    </p>
-                    <p>• Questa è la classifica finale del contest</p>
-                    <p>
-                      • La classifica rimarrà visibile per consultazione fino al{" "}
-                      {visibilityEndDate && formatVisibilityEndDate(visibilityEndDate)}
-                    </p>
-                    <p>• Congratulazioni a tutti i partecipanti!</p>
-                    <p className="mt-4">
-                      <strong className="text-white">Resta sintonizzato!</strong> Nuovi contest arriveranno presto!
-                    </p>
-                  </>
-                )}
+                <p>
+                  <strong className="text-white">Come funziona il Contest:</strong>
+                </p>
+                <p>• Completa i capitoli del tema contest per guadagnare PP</p>
+                <p>• I PP sono moltiplicati per {activeEvent?.pp_multiplier}x durante l'evento</p>
+                <p>• La classifica è separata da quella generale</p>
+                <p>• Il contest termina il {activeEvent && formatEventEndDate(activeEvent.event_end_date)}</p>
+                <p className="mt-4">
+                  <strong className="text-white">Partecipa ora!</strong> Seleziona il tema contest su Telegram!
+                </p>
               </div>
             </CardContent>
           </Card>
