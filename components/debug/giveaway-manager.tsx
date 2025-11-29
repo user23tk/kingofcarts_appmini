@@ -208,15 +208,39 @@ export function GiveawayManager() {
   }
 
   const createGiveaway = async () => {
+    if (!newGiveaway.name.trim()) {
+      setError("Il nome del giveaway è obbligatorio")
+      return
+    }
+    if (!newGiveaway.prize_title.trim()) {
+      setError("Il titolo del premio è obbligatorio")
+      return
+    }
+    if (!newGiveaway.ends_at) {
+      setError("La data di fine è obbligatoria")
+      return
+    }
+
     setLoading(true)
     setError(null)
     try {
+      console.log("[v0] Creating giveaway with data:", newGiveaway)
+
       const response = await debugFetch("/api/debug/giveaway/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(newGiveaway),
+        body: JSON.stringify({
+          name: newGiveaway.name.trim(),
+          description: newGiveaway.description.trim() || null,
+          pp_per_ticket: newGiveaway.pp_per_ticket || 100,
+          prize_title: newGiveaway.prize_title.trim(),
+          prize_description: newGiveaway.prize_description.trim() || null,
+          prize_link: newGiveaway.prize_link.trim() || null,
+          prize_image_url: newGiveaway.prize_image_url || null,
+          ends_at: newGiveaway.ends_at,
+        }),
       })
 
       if (!response.ok) {
