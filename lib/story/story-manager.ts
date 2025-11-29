@@ -243,7 +243,18 @@ export class StoryManager {
       `[v0] Theme completion check: current=${themeProgress.current_chapter}, available=${availableChapters}, completed=${isThemeCompleted}`,
     )
 
-    const progress = await this.getUserProgress(userId)
+    QueryCache.invalidate(`user_progress:${userId}`)
+
+    const { data: progress, error: progressError } = await supabase
+      .from("user_progress")
+      .select("*")
+      .eq("user_id", userId)
+      .single()
+
+    if (progressError && progressError.code !== "PGRST116") {
+      console.error(`[v0] [PP UPDATE] Error fetching user_progress:`, progressError)
+    }
+
     const oldTotalPP = progress?.total_pp || 0
     const newTotalPP = oldTotalPP + finalPPGained
 
@@ -252,13 +263,14 @@ export class StoryManager {
     await this.updateUserProgress(userId, theme, newChapter, isThemeCompleted)
 
     if (progress) {
+      // Existing user - update their record
       const currentChaptersCompleted = progress.chapters_completed || 0
       const currentThemesCompleted = progress.themes_completed || 0
 
       const completedThemes = progress.completed_themes || []
       const isNewThemeCompletion = isThemeCompleted && !completedThemes.includes(theme)
 
-      console.log(`[v0] [PP UPDATE] Updating user_progress table:`, {
+      console.log(`[v0] [PP UPDATE] Updating existing user_progress:`, {
         chapters_completed: currentChaptersCompleted + 1,
         themes_completed: isNewThemeCompletion ? currentThemesCompleted + 1 : currentThemesCompleted,
         total_pp: newTotalPP,
@@ -278,14 +290,53 @@ export class StoryManager {
         console.error(`[v0] [PP UPDATE] Failed to update user_progress:`, updateError)
         throw new Error(`Failed to update user progress: ${updateError.message}`)
       }
+    } else {
+      console.log(`[v0] [PP UPDATE] Creating new user_progress for user ${userId} with PP: ${newTotalPP}`)
 
-      const { data: verifyData } = await supabase
-        .from("user_progress")
-        .select("total_pp, chapters_completed, themes_completed, completed_themes")
-        .eq("user_id", userId)
-        .single()
+      const { error: insertError } = await supabase.from("user_progress").insert({
+        user_id: userId,
+        current_theme: theme,
+        current_chapter: newChapter,
+        completed_themes: isThemeCompleted ? [theme] : [],
+        chapters_completed: 1,
+        themes_completed: isThemeCompleted ? 1 : 0,
+        total_pp: newTotalPP,
+      })
 
-      console.log(`[v0] [PP UPDATE] Verified user_progress after update:`, verifyData)
+      if (insertError) {
+        // If insert fails due to race condition (record created by another request), try update
+        console.log(`[v0] [PP UPDATE] Insert failed, attempting upsert:`, insertError)
+
+        const { error: upsertError } = await supabase.from("user_progress").upsert(
+          {
+            user_id: userId,
+            current_theme: theme,
+            current_chapter: newChapter,
+            completed_themes: isThemeCompleted ? [theme] : [],
+            chapters_completed: 1,
+            themes_completed: isThemeCompleted ? 1 : 0,
+            total_pp: newTotalPP,
+          },
+          { onConflict: "user_id" },
+        )
+
+        if (upsertError) {
+          console.error(`[v0] [PP UPDATE] Failed to upsert user_progress:`, upsertError)
+          throw new Error(`Failed to create/update user progress: ${upsertError.message}`)
+        }
+      }
+    }
+
+    const { data: verifyData } = await supabase
+      .from("user_progress")
+      .select("total_pp, chapters_completed, themes_completed, completed_themes")
+      .eq("user_id", userId)
+      .single()
+
+    console.log(`[v0] [PP UPDATE] Verified user_progress after update:`, verifyData)
+
+    if (verifyData && verifyData.total_pp !== newTotalPP) {
+      console.error(`[v0] [PP UPDATE] WARNING: PP mismatch! Expected ${newTotalPP}, got ${verifyData.total_pp}`)
     }
 
     try {
@@ -302,8 +353,8 @@ export class StoryManager {
       stat_name_param: "total_chapters_completed",
     })
 
-    if (isThemeCompleted && progress) {
-      const completedThemes = progress.completed_themes || []
+    if (isThemeCompleted) {
+      const completedThemes = progress?.completed_themes || []
       if (!completedThemes.includes(theme)) {
         await supabase.rpc("increment_global_stat", {
           stat_name_param: "total_themes_completed",
