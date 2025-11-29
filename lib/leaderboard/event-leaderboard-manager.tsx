@@ -44,6 +44,8 @@ export class EventLeaderboardManager {
     const supabase = await createClient()
 
     try {
+      console.log("[EventLeaderboardManager] Fetching leaderboard for theme:", theme)
+
       const { data, error } = await supabase.rpc("get_event_leaderboard_v2", {
         p_theme: theme,
         p_limit: limit,
@@ -53,6 +55,8 @@ export class EventLeaderboardManager {
         console.error("[EventLeaderboardManager] Error fetching event leaderboard:", error)
         throw error
       }
+
+      console.log("[EventLeaderboardManager] Leaderboard data:", data?.length || 0, "entries")
 
       if (!data || data.length === 0) {
         return []
@@ -114,25 +118,21 @@ export class EventLeaderboardManager {
 
   /**
    * Update event progress for a user
-   * Uses RPC: update_event_progress_v2
+   * Uses RPC: update_event_leaderboard_atomic
    *
    * NOTE: This updates ONLY the event_leaderboard table.
    * Total PP updates are handled separately in the story completion flow.
    */
-  static async updateEventProgress(
-    userId: string,
-    theme: string,
-    ppGained: number,
-    chaptersIncrement = 1,
-  ): Promise<UserEventStats | null> {
+  static async updateEventProgress(userId: string, theme: string, ppGained: number): Promise<boolean> {
     const supabase = await createClient()
 
     try {
-      const { data, error } = await supabase.rpc("update_event_progress_v2", {
+      console.log("[EventLeaderboardManager] Updating event progress:", { userId, theme, ppGained })
+
+      const { error } = await supabase.rpc("update_event_leaderboard_atomic", {
         p_user_id: userId,
         p_theme: theme,
         p_pp_gained: ppGained,
-        p_chapters_increment: chaptersIncrement,
       })
 
       if (error) {
@@ -140,24 +140,11 @@ export class EventLeaderboardManager {
         throw error
       }
 
-      if (!data || data.length === 0) {
-        return null
-      }
-
-      const stats = data[0]
-
-      return {
-        userId: stats.user_id,
-        theme: stats.theme,
-        totalPp: stats.total_pp || 0,
-        chaptersCompleted: stats.chapters_completed || 0,
-        rank: Number(stats.rank) || 0,
-        totalParticipants: 0, // Not returned by update function
-        lastUpdated: new Date().toISOString(),
-      }
+      console.log("[EventLeaderboardManager] Event progress updated successfully")
+      return true
     } catch (error) {
       console.error("[EventLeaderboardManager] Failed to update event progress:", error)
-      return null
+      return false
     }
   }
 

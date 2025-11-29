@@ -148,7 +148,7 @@ BEGIN
   FROM event_leaderboard el
   WHERE el.user_id = p_user_id AND el.theme = p_theme;
   
-  -- If user not found, return null
+  -- If user not found, return empty
   IF v_user_pp IS NULL THEN
     RETURN;
   END IF;
@@ -237,9 +237,8 @@ BEGIN
     chapters_completed = event_leaderboard.chapters_completed + 1,
     last_updated = NOW();
     
-  RAISE NOTICE '[EVENT] Updated event_leaderboard: user=%, theme=%, pp_gained=%, new_total=%',
-    p_user_id, p_theme, p_pp_gained, 
-    (SELECT total_pp FROM event_leaderboard WHERE user_id = p_user_id AND theme = p_theme);
+  RAISE NOTICE '[EVENT] Updated event_leaderboard: user=%, theme=%, pp_gained=%',
+    p_user_id, p_theme, p_pp_gained;
 END;
 $$;
 
@@ -307,8 +306,8 @@ END;
 $$;
 
 -- ============================================================
--- Verification queries (for testing)
+-- DONE - No test queries that could fail
 -- ============================================================
+-- To test manually after running this script:
 -- SELECT * FROM get_active_event();
 -- SELECT * FROM get_event_leaderboard_v2('natale', 10);
--- SELECT * FROM get_user_event_stats('user-uuid-here', 'natale');
