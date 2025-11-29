@@ -8,19 +8,50 @@ export class EventManager {
   static async getActiveEvent() {
     const supabase = getAdminClient()
 
+    console.log("[v0] [EventManager] getActiveEvent called")
+
     // First deactivate any expired events
-    await supabase.rpc("deactivate_expired_events")
+    const { error: deactivateError } = await supabase.rpc("deactivate_expired_events")
+    if (deactivateError) {
+      console.error("[v0] [EventManager] deactivate_expired_events failed:", deactivateError)
+    }
 
     // Then get the active event using consolidated RPC
     const { data, error } = await supabase.rpc("get_active_event")
 
+    console.log("[v0] [EventManager] get_active_event RPC response:", {
+      data,
+      dataLength: data?.length,
+      dataType: typeof data,
+      isArray: Array.isArray(data),
+      error,
+    })
+
     if (error) {
-      console.error("[v0] Error getting active event:", error)
+      console.error("[v0] [EventManager] Error getting active event:", error)
       return null
     }
 
-    // Return first event or null
-    return data && data.length > 0 ? data[0] : null
+    // Handle different response formats
+    if (!data) {
+      console.log("[v0] [EventManager] No data returned from RPC")
+      return null
+    }
+
+    // If data is array, get first element
+    if (Array.isArray(data) && data.length > 0) {
+      console.log("[v0] [EventManager] Returning first event from array:", data[0])
+      return data[0]
+    }
+
+    // If data is a single object (not array)
+    if (!Array.isArray(data) && typeof data === "object") {
+      console.log("[v0] [EventManager] Returning single event object:", data)
+      return data
+    }
+
+    console.log("[v0] [EventManager] Empty or invalid response, returning null")
+    return null
   }
 
   /**
