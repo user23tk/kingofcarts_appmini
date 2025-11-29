@@ -67,7 +67,10 @@ export class StoryManager {
 
   async createUserProgress(userId: string, theme: string): Promise<UserProgress> {
     const supabase = createAdminClient()
-    const { data } = await supabase
+
+    console.log(`[v0] Creating new user_progress for user ${userId} with theme ${theme}`)
+
+    const { data, error } = await supabase
       .from("user_progress")
       .insert({
         user_id: userId,
@@ -75,10 +78,38 @@ export class StoryManager {
         current_chapter: 1,
         completed_themes: [],
         chapters_completed: 0,
+        themes_completed: 0,
         total_pp: 0,
+        theme_progress: {
+          [theme]: {
+            current_chapter: 1,
+            completed: false,
+            last_interaction: new Date().toISOString(),
+          },
+        },
       })
       .select()
       .single()
+
+    if (error) {
+      console.error(`[v0] Failed to create user_progress for user ${userId}:`, error)
+      throw new Error(`Failed to create user progress: ${error.message}`)
+    }
+
+    if (!data) {
+      console.error(`[v0] No data returned after creating user_progress for user ${userId}`)
+      throw new Error("Failed to create user progress: no data returned")
+    }
+
+    // Invalidate cache so subsequent reads get fresh data
+    QueryCache.invalidate(`user_progress:${userId}`)
+
+    console.log(`[v0] Successfully created user_progress for user ${userId}:`, {
+      id: data.id,
+      total_pp: data.total_pp,
+      current_theme: data.current_theme,
+    })
+
     return data
   }
 
@@ -238,6 +269,7 @@ export class StoryManager {
 
     const isThemeCompleted = themeProgress.current_chapter >= availableChapters
     const newChapter = themeProgress.current_chapter + 1
+    const currentChapterNumber = themeProgress.current_chapter
 
     console.log(
       `[v0] Theme completion check: current=${themeProgress.current_chapter}, available=${availableChapters}, completed=${isThemeCompleted}`,
@@ -286,6 +318,22 @@ export class StoryManager {
         .single()
 
       console.log(`[v0] [PP UPDATE] Verified user_progress after update:`, verifyData)
+    }
+
+    try {
+      await PPValidator.auditPPGain({
+        user_id: userId,
+        theme: theme,
+        chapter_number: currentChapterNumber,
+        scene_index: -1, // -1 indicates chapter completion
+        choice_id: "CHAPTER_COMPLETE",
+        pp_gained: finalPPGained,
+        session_total_pp: newTotalPP,
+      })
+      console.log(`[v0] [PP UPDATE] PP audit recorded for chapter completion`)
+    } catch (auditError) {
+      // Don't fail the whole operation if audit fails, just log
+      console.error(`[v0] [PP UPDATE] Failed to record PP audit:`, auditError)
     }
 
     try {

@@ -1,25 +1,18 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { logger } from "@/lib/debug/logger"
-import { requireDebugAuth } from "@/lib/security/debug-auth"
 
 export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
   try {
-    const authCheck = await requireDebugAuth(request)
-    if (!authCheck.authorized) {
-      return authCheck.response!
-    }
-
     const botToken = process.env.TELEGRAM_BOT_TOKEN
 
     if (!botToken) {
-      logger.error("[configure-inline-mode] TELEGRAM_BOT_TOKEN not configured")
+      console.error("[v0] TELEGRAM_BOT_TOKEN not configured")
       return NextResponse.json({ error: "Bot token not configured" }, { status: 500 })
     }
 
-    logger.info("[configure-inline-mode] Configuring bot menu commands and inline mode setup...")
+    console.log("[v0] Configuring bot menu commands and inline mode setup...")
 
     const supabase = await createClient()
     const { data: activeEventData } = await supabase.rpc("get_active_event")
@@ -48,7 +41,7 @@ export async function POST(request: NextRequest) {
     })
 
     const commandResult = await response.json()
-    logger.info("[configure-inline-mode] Bot menu commands configured:", commandResult)
+    console.log("[v0] Bot menu commands configured:", commandResult)
 
     const botInfoResponse = await fetch(`https://api.telegram.org/bot${botToken}/getMe`)
     const botInfo = await botInfoResponse.json()
@@ -79,7 +72,7 @@ export async function POST(request: NextRequest) {
       commandResult,
     })
   } catch (error) {
-    logger.error("[configure-inline-mode] Error configuring bot commands:", error)
+    console.error("[v0] Error configuring bot commands:", error)
     return NextResponse.json({ error: "Failed to configure bot commands" }, { status: 500 })
   }
 }

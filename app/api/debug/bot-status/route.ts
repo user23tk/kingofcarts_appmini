@@ -1,21 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { logger } from "@/lib/debug/logger"
-import { requireDebugAuth } from "@/lib/security/debug-auth"
 
 export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest) {
   try {
-    const authCheck = await requireDebugAuth(request)
-    if (!authCheck.authorized) {
-      return authCheck.response!
-    }
-
     const botToken = process.env.TELEGRAM_BOT_TOKEN
     const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET
     const appDomain = process.env.APP_DOMAIN
 
-    logger.info("[bot-status] Starting bot diagnostics...")
+    console.log("[v0] Starting bot diagnostics...")
 
     if (!botToken) {
       return NextResponse.json(
@@ -121,7 +114,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(diagnostics, { status: 200 })
   } catch (error) {
-    logger.error("[bot-status] Error in bot diagnostics:", error)
+    console.error("[v0] Error in bot diagnostics:", error)
     return NextResponse.json(
       {
         error: "Failed to run diagnostics",

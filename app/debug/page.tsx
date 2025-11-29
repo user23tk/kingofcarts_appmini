@@ -6,7 +6,7 @@ import { DebugDashboard } from "@/components/debug/debug-dashboard"
 import { DebugAuth } from "@/components/debug/debug-auth"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { LogOut, Crown } from "lucide-react"
+import { LogOut } from "lucide-react"
 
 export default function DebugPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -37,20 +37,15 @@ export default function DebugPage() {
 
   const handleLogout = () => {
     sessionStorage.removeItem("debug_auth_token")
-    sessionStorage.removeItem("debug_selected_category")
-    sessionStorage.removeItem("debug_selected_tool")
     setIsAuthenticated(false)
   }
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card className="w-[300px]">
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Crown className="h-5 w-5 animate-pulse" />
-              Loading...
-            </CardTitle>
+            <CardTitle>Loading...</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="animate-pulse space-y-4">
@@ -70,20 +65,23 @@ export default function DebugPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-        <div className="container flex h-14 items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Crown className="h-5 w-5 text-amber-500" />
-            <span className="font-bold text-card-foreground">King of Carts</span>
-            <span className="text-muted-foreground hidden md:inline">Debug Dashboard</span>
+        <div className="container flex h-14 items-center">
+          <div className="mr-4 flex">
+            <span className="font-bold text-card-foreground">🎭 King of Carts Debug Dashboard</span>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </Button>
+          <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
+            <div className="w-full flex-1 md:w-auto md:flex-none">
+              <span className="text-sm text-muted-foreground">System Monitoring & Testing</span>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleLogout} className="ml-4 bg-transparent">
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+          </div>
         </div>
       </header>
 
-      <main className="container mx-auto py-6">
+      <div className="container mx-auto py-6">
         <Suspense
           fallback={
             <Card>
@@ -101,7 +99,7 @@ export default function DebugPage() {
         >
           <DebugDashboard />
         </Suspense>
-      </main>
+      </div>
     </div>
   )
 }

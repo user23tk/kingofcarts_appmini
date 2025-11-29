@@ -1,26 +1,25 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { TelegramBot } from "@/lib/telegram/bot"
-import { logger } from "@/lib/debug/logger"
-import { requireDebugAuth } from "@/lib/security/debug-auth"
 
 const bot = new TelegramBot()
 
 export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest) {
-  const authCheck = await requireDebugAuth(request)
-  if (!authCheck.authorized) {
-    return authCheck.response!
+  const adminKey = request.nextUrl.searchParams.get("key")
+
+  if (!adminKey || adminKey !== process.env.DEBUG_ADMIN_KEY) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   try {
     // Test if bot can make API calls
     const botInfo = await bot.getMe()
-    logger.info("[test-inline] Bot info:", botInfo)
+    console.log("[v0] Bot info:", botInfo)
 
     // Check webhook info
     const webhookInfo = await bot.getWebhookInfo()
-    logger.info("[test-inline] Webhook info:", webhookInfo)
+    console.log("[v0] Webhook info:", webhookInfo)
 
     return NextResponse.json({
       success: true,
@@ -29,7 +28,7 @@ export async function GET(request: NextRequest) {
       message: "Bot is working. Check logs for inline query debugging.",
     })
   } catch (error) {
-    logger.error("[test-inline] Debug test error:", error)
+    console.error("[v0] Debug test error:", error)
     return NextResponse.json(
       {
         error: "Bot test failed",

@@ -1,17 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { logger } from "@/lib/debug/logger"
-import { requireDebugAuth } from "@/lib/security/debug-auth"
 
 export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
   try {
-    const authCheck = await requireDebugAuth(request)
-    if (!authCheck.authorized) {
-      return authCheck.response!
-    }
-
     const { userId } = await request.json()
 
     if (!userId) {
@@ -35,7 +28,7 @@ export async function POST(request: NextRequest) {
       raw_data: rankData,
     })
   } catch (error) {
-    logger.error("[test-rank-rpc] Test rank RPC error:", error)
+    console.error("[v0] Test rank RPC error:", error)
     return NextResponse.json(
       { error: "Internal server error", details: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 },

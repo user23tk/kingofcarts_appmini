@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { AdvancedRateLimiter } from "@/lib/security/rate-limiter"
 import { requireDebugAuth } from "@/lib/security/debug-auth"
-import { logger } from "@/lib/debug/logger"
 
 export const dynamic = "force-dynamic"
 
@@ -21,14 +20,14 @@ export async function GET(request: NextRequest) {
       burstWindow: Number.parseInt(process.env.RATE_LIMIT_BURST_WINDOW_SECONDS || "60"),
     }
 
-    logger.debug(`[rate-limit-status] Rate limiting status requested - disabled: ${isDisabled}`)
+    console.log(`[v0] [DEBUG] Rate limiting status requested - disabled: ${isDisabled}`)
 
     return NextResponse.json({
       isDisabled,
       config,
     })
   } catch (error) {
-    logger.error("[rate-limit-status] Error fetching rate limit status:", error)
+    console.error("[v0] [DEBUG] Error fetching rate limit status:", error)
     return NextResponse.json({ error: "Failed to fetch rate limit status" }, { status: 500 })
   }
 }

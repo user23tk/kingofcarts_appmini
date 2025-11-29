@@ -2,7 +2,6 @@ import { type NextRequest, NextResponse } from "next/server"
 import { requireDebugAuth } from "@/lib/security/debug-auth"
 import { getAdminClient } from "@/lib/supabase/admin-singleton"
 import { LeaderboardManager } from "@/lib/leaderboard/leaderboard-manager"
-import { logger } from "@/lib/debug/logger"
 
 export const dynamic = "force-dynamic"
 
@@ -106,7 +105,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    logger.error("[user-validator] User validator error:", error)
+    console.error("[v0] User validator error:", error)
     return NextResponse.json({ error: "Internal server error", details: String(error) }, { status: 500 })
   }
 }

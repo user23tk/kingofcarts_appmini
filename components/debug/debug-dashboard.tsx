@@ -1,19 +1,15 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-
-// Tool components
 import { StatsOverview } from "./stats-overview"
 import { DatabaseViewer } from "./database-viewer"
 import { SystemHealth } from "./system-health"
 import { TestControls } from "./test-controls"
 import { WebhookConfig } from "./webhook-config"
+import { RateLimitStatus } from "./rate-limit-status"
 import { MenuCommandsConfig } from "./menu-commands-config"
 import { ThemeProgressManager } from "./theme-progress-manager"
 import { StoryGenerator } from "./story-generator"
@@ -23,70 +19,27 @@ import { StatsValidator } from "./stats-validator"
 import { MiniAppTester } from "./miniapp-tester"
 import { RankDebugger } from "./rank-debugger"
 import { UserValidator } from "./user-validator"
-import { GiveawayManager } from "./giveaway-manager"
-
-// New components
-import { CategorySelector } from "./category-selector"
-import { QuickStatsBar } from "./quick-stats-bar"
-import { ToolTabs } from "./tool-tabs"
-
-import { type DebugCategory, DEBUG_CATEGORIES, getCategoryById } from "@/lib/debug/categories"
-import { RefreshCw, AlertTriangle } from "lucide-react"
-
-// Map tool IDs to components
-const TOOL_COMPONENTS: Record<string, React.ComponentType> = {
-  stats: StatsOverview,
-  database: DatabaseViewer,
-  health: SystemHealth,
-  testing: TestControls,
-  webhook: WebhookConfig,
-  commands: MenuCommandsConfig,
-  migration: ThemeProgressManager,
-  generator: StoryGenerator,
-  import: JsonImport,
-  events: EventContestManager,
-  validator: StatsValidator,
-  miniapp: MiniAppTester,
-  rank: RankDebugger,
-  "user-validator": UserValidator,
-  giveaway: GiveawayManager,
-}
+import {
+  Activity,
+  Database,
+  Heart,
+  TestTube,
+  RefreshCw,
+  Settings,
+  Menu,
+  GitBranch,
+  Sparkles,
+  Upload,
+  Trophy,
+  CheckCircle2,
+  Smartphone,
+  Target,
+  User,
+} from "lucide-react"
 
 export function DebugDashboard() {
-  const [selectedCategory, setSelectedCategory] = useState<DebugCategory>(DEBUG_CATEGORIES[0])
-  const [selectedTool, setSelectedTool] = useState<string>(DEBUG_CATEGORIES[0].tools[0].id)
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
   const [isRefreshing, setIsRefreshing] = useState(false)
-
-  // Persist selection in sessionStorage
-  useEffect(() => {
-    const savedCategory = sessionStorage.getItem("debug_selected_category")
-    const savedTool = sessionStorage.getItem("debug_selected_tool")
-
-    if (savedCategory) {
-      const category = getCategoryById(savedCategory)
-      if (category) {
-        setSelectedCategory(category)
-        if (savedTool && category.tools.some((t) => t.id === savedTool)) {
-          setSelectedTool(savedTool)
-        } else {
-          setSelectedTool(category.tools[0].id)
-        }
-      }
-    }
-  }, [])
-
-  const handleCategoryChange = (category: DebugCategory) => {
-    setSelectedCategory(category)
-    setSelectedTool(category.tools[0].id)
-    sessionStorage.setItem("debug_selected_category", category.id)
-    sessionStorage.setItem("debug_selected_tool", category.tools[0].id)
-  }
-
-  const handleToolChange = (toolId: string) => {
-    setSelectedTool(toolId)
-    sessionStorage.setItem("debug_selected_tool", toolId)
-  }
 
   const handleRefresh = async () => {
     setIsRefreshing(true)
@@ -95,19 +48,15 @@ export function DebugDashboard() {
     setIsRefreshing(false)
   }
 
-  const ToolComponent = TOOL_COMPONENTS[selectedTool]
-  const currentTool = selectedCategory.tools.find((t) => t.id === selectedTool)
-
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-card-foreground">Debug Dashboard</h1>
-          <p className="text-muted-foreground">Monitor and test the King of Carts system</p>
+          <p className="text-muted-foreground">Monitor and test the King of Carts Telegram bot</p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="text-sm text-muted-foreground">Updated: {lastRefresh.toLocaleTimeString()}</div>
+          <div className="text-sm text-muted-foreground">Last updated: {lastRefresh.toLocaleTimeString()}</div>
           <Button onClick={handleRefresh} disabled={isRefreshing} variant="outline" size="sm">
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
             Refresh
@@ -115,88 +64,132 @@ export function DebugDashboard() {
         </div>
       </div>
 
-      {/* Quick Stats Bar */}
-      <QuickStatsBar />
+      <Alert className="border-accent/20 bg-accent/5">
+        <Heart className="h-4 w-4 text-accent" />
+        <AlertTitle className="text-primary font-semibold">System Status</AlertTitle>
+        <AlertDescription className="text-foreground">
+          All systems operational. Bot is responding normally to user interactions.
+        </AlertDescription>
+      </Alert>
 
-      {/* Category Selector and Tool Content */}
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                Debug Tools
-                {selectedCategory.isLegacy && (
-                  <Badge variant="outline" className="text-yellow-600 border-yellow-600">
-                    <AlertTriangle className="h-3 w-3 mr-1" />
-                    Legacy
-                  </Badge>
-                )}
-              </CardTitle>
-              <CardDescription>{selectedCategory.description}</CardDescription>
-            </div>
-            <CategorySelector selectedCategory={selectedCategory} onCategoryChange={handleCategoryChange} />
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Legacy Warning */}
-          {selectedCategory.isLegacy && (
-            <Alert variant="destructive" className="bg-yellow-500/10 border-yellow-500/50">
-              <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              <AlertTitle className="text-yellow-600">Legacy Tools</AlertTitle>
-              <AlertDescription className="text-yellow-600/80">
-                These tools are for the old bot with inline buttons. The mini app no longer uses these features.
-                Consider removing them if the old bot is fully deprecated.
-              </AlertDescription>
-            </Alert>
-          )}
+      <RateLimitStatus />
 
-          {/* Tool Tabs */}
-          <ToolTabs tools={selectedCategory.tools} selectedTool={selectedTool} onToolChange={handleToolChange} />
+      <Tabs defaultValue="stats" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-14">
+          <TabsTrigger value="stats" className="flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Statistics
+          </TabsTrigger>
+          <TabsTrigger value="database" className="flex items-center gap-2">
+            <Database className="h-4 w-4" />
+            Database
+          </TabsTrigger>
+          <TabsTrigger value="health" className="flex items-center gap-2">
+            <Heart className="h-4 w-4" />
+            System Health
+          </TabsTrigger>
+          <TabsTrigger value="testing" className="flex items-center gap-2">
+            <TestTube className="h-4 w-4" />
+            Testing
+          </TabsTrigger>
+          <TabsTrigger value="miniapp" className="flex items-center gap-2">
+            <Smartphone className="h-4 w-4" />
+            Mini App
+          </TabsTrigger>
+          <TabsTrigger value="rank" className="flex items-center gap-2">
+            <Target className="h-4 w-4" />
+            Rank Debug
+          </TabsTrigger>
+          <TabsTrigger value="webhook" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Webhook
+          </TabsTrigger>
+          <TabsTrigger value="commands" className="flex items-center gap-2">
+            <Menu className="h-4 w-4" />
+            Commands
+          </TabsTrigger>
+          <TabsTrigger value="migration" className="flex items-center gap-2">
+            <GitBranch className="h-4 w-4" />
+            Migration
+          </TabsTrigger>
+          <TabsTrigger value="generator" className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            Story AI
+          </TabsTrigger>
+          <TabsTrigger value="import" className="flex items-center gap-2">
+            <Upload className="h-4 w-4" />
+            JSON Import
+          </TabsTrigger>
+          <TabsTrigger value="events" className="flex items-center gap-2">
+            <Trophy className="h-4 w-4" />
+            Events
+          </TabsTrigger>
+          <TabsTrigger value="validator" className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4" />
+            Validator
+          </TabsTrigger>
+          <TabsTrigger value="user-validator" className="flex items-center gap-2">
+            <User className="h-4 w-4" />
+            User Validator
+          </TabsTrigger>
+        </TabsList>
 
-          {/* Tool Content */}
-          <div className="pt-4">
-            {ToolComponent ? (
-              <ToolComponent />
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">Tool not found: {selectedTool}</div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+        <TabsContent value="stats" className="space-y-4">
+          <StatsOverview />
+        </TabsContent>
 
-      {/* Quick Access */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-medium text-muted-foreground">Quick Access</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { id: "leaderboard", tool: "rank", label: "Leaderboard" },
-              { id: "events", tool: "events", label: "Events" },
-              { id: "events", tool: "giveaway", label: "Giveaway" },
-              { id: "miniapp", tool: "miniapp", label: "Mini App" },
-              { id: "content", tool: "generator", label: "Story Generator" },
-              { id: "content", tool: "import", label: "JSON Import" },
-            ].map((item) => (
-              <Button
-                key={`${item.id}-${item.tool}`}
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const category = getCategoryById(item.id)
-                  if (category) {
-                    handleCategoryChange(category)
-                    handleToolChange(item.tool)
-                  }
-                }}
-              >
-                {item.label}
-              </Button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+        <TabsContent value="database" className="space-y-4">
+          <DatabaseViewer />
+        </TabsContent>
+
+        <TabsContent value="health" className="space-y-4">
+          <SystemHealth />
+        </TabsContent>
+
+        <TabsContent value="testing" className="space-y-4">
+          <TestControls />
+        </TabsContent>
+
+        <TabsContent value="miniapp" className="space-y-4">
+          <MiniAppTester />
+        </TabsContent>
+
+        <TabsContent value="rank" className="space-y-4">
+          <RankDebugger />
+        </TabsContent>
+
+        <TabsContent value="webhook" className="space-y-4">
+          <WebhookConfig />
+        </TabsContent>
+
+        <TabsContent value="commands" className="space-y-4">
+          <MenuCommandsConfig />
+        </TabsContent>
+
+        <TabsContent value="migration" className="space-y-4">
+          <ThemeProgressManager />
+        </TabsContent>
+
+        <TabsContent value="generator" className="space-y-4">
+          <StoryGenerator />
+        </TabsContent>
+
+        <TabsContent value="import" className="space-y-4">
+          <JsonImport />
+        </TabsContent>
+
+        <TabsContent value="events" className="space-y-4">
+          <EventContestManager />
+        </TabsContent>
+
+        <TabsContent value="validator" className="space-y-4">
+          <StatsValidator />
+        </TabsContent>
+
+        <TabsContent value="user-validator" className="space-y-4">
+          <UserValidator />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

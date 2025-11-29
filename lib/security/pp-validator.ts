@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 export interface PPValidationResult {
   isValid: boolean
@@ -77,12 +78,11 @@ export class PPValidator {
     const supabase = await createClient()
 
     try {
-      // Verifica PP guadagnati nell'ultima ora (excluding onboarding bonus)
+      // Verifica PP guadagnati nell'ultima ora
       const { data: hourlyData } = await supabase
         .from("pp_audit")
         .select("pp_gained")
         .eq("user_id", userId)
-        .neq("theme", "ONBOARDING_BONUS") // Exclude bonus from hourly limit
         .gte("created_at", new Date(Date.now() - 60 * 60 * 1000).toISOString())
 
       const hourlyPP = hourlyData?.reduce((sum, record) => sum + record.pp_gained, 0) || 0
@@ -94,12 +94,11 @@ export class PPValidator {
         }
       }
 
-      // Verifica PP guadagnati nelle ultime 24 ore (excluding onboarding bonus)
+      // Verifica PP guadagnati nelle ultime 24 ore
       const { data: dailyData } = await supabase
         .from("pp_audit")
         .select("pp_gained")
         .eq("user_id", userId)
-        .neq("theme", "ONBOARDING_BONUS") // Exclude bonus from daily limit
         .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
 
       const dailyPP = dailyData?.reduce((sum, record) => sum + record.pp_gained, 0) || 0
@@ -135,10 +134,10 @@ export class PPValidator {
     user_agent?: string
     ip_address?: string
   }): Promise<void> {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     try {
-      await supabase.from("pp_audit").insert({
+      const { error } = await supabase.from("pp_audit").insert({
         user_id: auditData.user_id,
         theme: auditData.theme,
         chapter_number: auditData.chapter_number,
@@ -150,9 +149,15 @@ export class PPValidator {
         ip_address: auditData.ip_address,
       })
 
+      if (error) {
+        console.error("[AUDIT] Failed to insert PP audit record:", error)
+        throw error
+      }
+
       console.log(`[AUDIT] PP gain recorded: User ${auditData.user_id} gained ${auditData.pp_gained} PP`)
     } catch (error) {
       console.error("[AUDIT] Failed to record PP gain:", error)
+      throw error
     }
   }
 

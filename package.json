@@ -43,7 +43,6 @@
     "@supabase/supabase-js": "latest",
     "@twa-dev/sdk": "^7.10.1",
     "@vercel/analytics": "latest",
-    "@vercel/blob": "2.0.0",
     "@vercel/kv": "latest",
     "ai": "latest",
     "autoprefixer": "^10.4.20",
