@@ -58,6 +58,7 @@ export interface UserTicketData {
     ticket_number: number
     created_at: string
   }>
+  onboarding_bonus_claimed?: boolean
 }
 
 export interface GiveawayWinner {

@@ -87,13 +87,22 @@ export default function GiveawayPage() {
   })
 
   useEffect(() => {
-    if (userData && userData.total_pp === 0) {
+    // E solo se non hanno già riscattato il bonus
+    if (
+      giveaway &&
+      giveaway.is_active &&
+      userData &&
+      userData.total_pp === 0 &&
+      userData.onboarding_bonus_claimed === false
+    ) {
       const dismissed = localStorage.getItem("onboarding_bonus_dismissed")
       if (!dismissed) {
         setShowOnboardingBanner(true)
       }
+    } else {
+      setShowOnboardingBanner(false)
     }
-  }, [userData])
+  }, [userData, giveaway])
 
   if (isLoading) {
     return (
