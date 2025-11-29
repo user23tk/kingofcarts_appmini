@@ -344,6 +344,12 @@ export class StoryManager {
       console.log(`[v0] [PP UPDATE] Updated event leaderboard for theme ${theme}`)
     } catch (eventError) {
       console.error(`[v0] [PP UPDATE] Failed to update event leaderboard:`, eventError)
+      console.error(`[v0] [PP UPDATE] Event error details:`, {
+        userId,
+        theme,
+        finalPPGained,
+        error: eventError instanceof Error ? eventError.message : String(eventError),
+      })
       // Don't throw - event leaderboard update shouldn't block the main flow
     }
 

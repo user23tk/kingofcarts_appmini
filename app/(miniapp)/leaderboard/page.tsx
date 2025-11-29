@@ -101,12 +101,15 @@ export default function LeaderboardPage() {
   const eventLeaderboard = eventData?.players || []
 
   useEffect(() => {
-    if (activeEvent && eventLeaderboard.length > 0 && activeTab === "general") {
+    // If there's an active event, default to event tab
+    if (activeEvent && activeTab === "general") {
       setActiveTab("event")
-    } else if (!activeEvent && activeTab === "event") {
+    }
+    // If no active event and on event tab, switch to general
+    else if (!activeEvent && activeTab === "event") {
       setActiveTab("general")
     }
-  }, [activeEvent, eventLeaderboard])
+  }, [activeEvent])
 
   const loading = isLoading || leaderboardLoading || eventLoading
   const error = leaderboardError || eventError

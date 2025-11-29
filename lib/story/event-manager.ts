@@ -134,16 +134,26 @@ export class EventManager {
   static async updateEventLeaderboard(userId: string, themeKey: string, ppGained: number): Promise<void> {
     const supabase = getAdminClient()
 
+    console.log(`[v0] [EVENT] updateEventLeaderboard called:`, {
+      userId,
+      themeKey,
+      ppGained,
+    })
+
     // Check if theme is an active event (with time window validation)
     const isEvent = await this.isEventTheme(themeKey)
+    console.log(`[v0] [EVENT] isEventTheme result for ${themeKey}:`, isEvent)
+
     if (!isEvent) {
-      console.log("[v0] Theme is not an active event, skipping event leaderboard update")
+      console.log(`[v0] [EVENT] Theme ${themeKey} is not an active event, skipping event leaderboard update`)
       return
     }
 
-    console.log(`[v0] [EVENT] Updating event leaderboard: user=${userId}, theme=${themeKey}, pp=${ppGained}`)
+    console.log(
+      `[v0] [EVENT] Calling update_event_leaderboard_atomic RPC: user=${userId}, theme=${themeKey}, pp=${ppGained}`,
+    )
 
-    const { error } = await supabase.rpc("update_event_leaderboard_atomic", {
+    const { data, error } = await supabase.rpc("update_event_leaderboard_atomic", {
       p_user_id: userId,
       p_theme: themeKey,
       p_pp_gained: ppGained,
@@ -157,8 +167,9 @@ export class EventManager {
         details: error.details,
         hint: error.hint,
       })
+      throw new Error(`Failed to update event leaderboard: ${error.message}`)
     } else {
-      console.log(`[v0] [EVENT] Successfully updated event leaderboard for theme ${themeKey}`)
+      console.log(`[v0] [EVENT] RPC call successful for theme ${themeKey}`)
 
       // Verify the update
       const { data: verifyData, error: verifyError } = await supabase
@@ -169,7 +180,7 @@ export class EventManager {
         .single()
 
       if (verifyError) {
-        console.warn(`[v0] [EVENT] Could not verify event leaderboard update:`, verifyError)
+        console.error(`[v0] [EVENT] Could not verify event leaderboard update:`, verifyError)
       } else {
         console.log(
           `[v0] [EVENT] Verified: user ${userId} now has ${verifyData?.total_pp} PP, ${verifyData?.chapters_completed} chapters in event ${themeKey}`,
