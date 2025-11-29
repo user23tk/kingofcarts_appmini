@@ -8,7 +8,6 @@ export type DebugCategory = {
   description: string
   tools: DebugTool[]
   isLegacy?: boolean
-  hidden?: boolean
 }
 
 export type DebugTool = {
@@ -85,7 +84,6 @@ export const DEBUG_CATEGORIES: DebugCategory[] = [
     icon: "Bot",
     description: "Old bot configuration (deprecated)",
     isLegacy: true,
-    hidden: true,
     tools: [
       { id: "testing", label: "Webhook Simulator", description: "Test webhook messages" },
       { id: "webhook", label: "Webhook Config", description: "Configure webhook settings" },
@@ -93,17 +91,6 @@ export const DEBUG_CATEGORIES: DebugCategory[] = [
     ],
   },
 ]
-
-export function getVisibleCategories(): DebugCategory[] {
-  return DEBUG_CATEGORIES.filter((cat) => !cat.hidden)
-}
-
-export function getAllCategories(includeHidden = false): DebugCategory[] {
-  if (includeHidden) {
-    return DEBUG_CATEGORIES
-  }
-  return getVisibleCategories()
-}
 
 export function getCategoryById(categoryId: string): DebugCategory | undefined {
   return DEBUG_CATEGORIES.find((cat) => cat.id === categoryId)
