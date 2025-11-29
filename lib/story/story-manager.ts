@@ -244,6 +244,8 @@ export class StoryManager {
     )
 
     QueryCache.invalidate(`user_progress:${userId}`)
+    QueryCache.invalidate(`dashboard:${userId}`)
+    QueryCache.invalidate(`profile:${userId}`)
 
     const { data: progress, error: progressError } = await supabase
       .from("user_progress")
@@ -348,6 +350,10 @@ export class StoryManager {
     }
 
     QueryCache.invalidate(`user_progress:${userId}`)
+    QueryCache.invalidate(`dashboard:${userId}`)
+    QueryCache.invalidate(`profile:${userId}`)
+    QueryCache.invalidate(`user:${userId}`)
+    QueryCache.invalidatePattern(`leaderboard`)
 
     await supabase.rpc("increment_global_stat", {
       stat_name_param: "total_chapters_completed",
