@@ -408,50 +408,38 @@ export class StoryManager {
 
   async isValidTheme(theme: string): Promise<boolean> {
     const supabase = createAdminClient()
-    const { data } = await supabase.from("themes").select("name").eq("name", theme).eq("is_active", true).single()
+    const { data } = await supabase
+      .from("themes")
+      .select("name, is_active, is_event, event_start_date, event_end_date")
+      .eq("name", theme)
+      .eq("is_active", true)
+      .single()
 
-    return !!data
-  }
-
-  async getThemeProgress(userId: string, theme: string): Promise<ThemeProgress> {
-    const supabase = createAdminClient()
-
-    const { data, error } = await supabase.rpc("get_theme_progress", {
-      p_user_id: userId,
-      p_theme_name: theme,
-    })
-
-    if (error) {
-      console.error("[v0] Error fetching theme progress:", error)
-      // Return safe default if RPC fails
-      return {
-        current_chapter: 1,
-        completed: false,
-        last_interaction: new Date().toISOString(),
-      }
+    if (!data) {
+      return false
     }
 
-    if (data) {
-      const validatedChapter = Math.max(1, data.current_chapter || 1)
-      console.log("[v0] Theme progress retrieved:", {
-        theme,
-        originalChapter: data.current_chapter,
-        validatedChapter,
-        completed: data.completed,
-      })
-
-      return {
-        current_chapter: validatedChapter,
-        completed: data.completed || false,
-        last_interaction: data.last_interaction || new Date().toISOString(),
-      }
+    if (!data.is_event) {
+      return true
     }
 
-    return {
-      current_chapter: 1,
-      completed: false,
-      last_interaction: new Date().toISOString(),
+    const now = new Date()
+    const startDate = data.event_start_date ? new Date(data.event_start_date) : null
+    const endDate = data.event_end_date ? new Date(data.event_end_date) : null
+
+    // Check if event has started
+    const hasStarted = !startDate || startDate <= now
+    // Check if event has not ended
+    const hasNotEnded = !endDate || endDate >= now
+
+    if (!hasStarted || !hasNotEnded) {
+      console.log(
+        `[v0] Event theme ${theme} is not within valid date range. Start: ${startDate}, End: ${endDate}, Now: ${now}`,
+      )
+      return false
     }
+
+    return true
   }
 
   async getAllThemesProgress(userId: string): Promise<AllThemesProgress> {

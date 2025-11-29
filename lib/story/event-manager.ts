@@ -1,8 +1,21 @@
 import { getAdminClient } from "@/lib/supabase/admin-singleton"
 
+export interface EventWithStatus {
+  id: string
+  name: string
+  description: string
+  event_emoji: string
+  pp_multiplier: number
+  event_start_date: string | null
+  event_end_date: string | null
+  is_active: boolean
+  status: "active" | "closed_visible"
+}
+
 export class EventManager {
   /**
    * Get the currently active event contest (with expiration check)
+   * Only returns events that are currently playable
    */
   static async getActiveEvent() {
     const supabase = getAdminClient()
@@ -19,6 +32,28 @@ export class EventManager {
 
     // Return first event or null
     return data && data.length > 0 ? data[0] : null
+  }
+
+  /**
+   * Get event for leaderboard display (visible for 7 days after end)
+   * Returns events that are either currently active OR ended within the last 7 days
+   */
+  static async getEventForLeaderboard(): Promise<EventWithStatus | null> {
+    const supabase = getAdminClient()
+
+    const { data, error } = await supabase.rpc("get_event_for_leaderboard")
+
+    if (error) {
+      console.error("[v0] Error getting event for leaderboard:", error)
+      // Fallback to active event check
+      return null
+    }
+
+    if (data && data.length > 0) {
+      return data[0] as EventWithStatus
+    }
+
+    return null
   }
 
   /**

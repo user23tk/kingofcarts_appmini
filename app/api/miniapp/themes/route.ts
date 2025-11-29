@@ -7,10 +7,11 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
 
-    // Fetch themes with chapter counts using aggregation
     const { data: themesData, error: themesError } = await supabase
       .from("themes")
-      .select("id, name, title, description, emoji, is_active, total_chapters")
+      .select(
+        "id, name, title, description, emoji, is_active, total_chapters, is_event, event_start_date, event_end_date",
+      )
       .eq("is_active", true)
       .order("name")
 
@@ -19,9 +20,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Failed to fetch themes" }, { status: 500 })
     }
 
+    // - Normal themes (is_event = false): just check is_active
+    // - Event themes (is_event = true): check date range as well
+    const now = new Date()
+    const filteredThemes = (themesData || []).filter((theme) => {
+      // Normal themes pass through if is_active is true (already filtered in query)
+      if (!theme.is_event) {
+        return true
+      }
+
+      // Event themes: must be within date range
+      const startDate = theme.event_start_date ? new Date(theme.event_start_date) : null
+      const endDate = theme.event_end_date ? new Date(theme.event_end_date) : null
+
+      // Check if event has started
+      const hasStarted = !startDate || startDate <= now
+      // Check if event has not ended
+      const hasNotEnded = !endDate || endDate >= now
+
+      return hasStarted && hasNotEnded
+    })
+
     // For each theme, count active chapters
     const themesWithCounts = await Promise.all(
-      (themesData || []).map(async (theme) => {
+      filteredThemes.map(async (theme) => {
         const { count, error: countError } = await supabase
           .from("story_chapters")
           .select("*", { count: "exact", head: true })
@@ -38,6 +60,8 @@ export async function GET(request: NextRequest) {
           description: theme.description || "",
           emoji: theme.emoji || "📖",
           chapterCount: count || 0,
+          isEvent: theme.is_event || false,
+          eventEndDate: theme.event_end_date || null,
         }
       }),
     )
