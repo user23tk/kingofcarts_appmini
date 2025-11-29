@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { getAdminClient } from "@/lib/supabase/admin-singleton"
 import { requireDebugAuth } from "@/lib/security/debug-auth"
+import { logger } from "@/lib/debug/logger"
 
 export const dynamic = "force-dynamic"
 
@@ -18,10 +19,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const action = body.action || (body.repair ? "repair" : "validate")
 
-    console.log("[v0] Validate-stats action:", action)
+    logger.info("[validate-stats] Validate-stats action:", action)
 
     if (action === "repair") {
-      console.log("[v0] [SECURITY] Stats repair initiated by admin:", {
+      logger.warn("[validate-stats] [SECURITY] Stats repair initiated by admin:", {
         ip: request.headers.get("x-forwarded-for") || "unknown",
         timestamp: new Date().toISOString(),
       })
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
         .select("user_id, theme_progress, chapters_completed, themes_completed, total_pp, completed_themes")
 
       if (upError) {
-        console.error("[v0] Error fetching user_progress:", upError)
+        logger.error("[validate-stats] Error fetching user_progress:", upError)
         return NextResponse.json({ error: "Failed to fetch user progress", details: upError }, { status: 500 })
       }
 
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest) {
         .in("stat_name", ["total_chapters_completed", "total_themes_completed"])
 
       if (gsError) {
-        console.error("[v0] Error fetching global_stats:", gsError)
+        logger.error("[validate-stats] Error fetching global_stats:", gsError)
         return NextResponse.json({ error: "Failed to fetch global stats", details: gsError }, { status: 500 })
       }
 
@@ -172,7 +173,7 @@ export async function POST(request: NextRequest) {
         .select("user_id, theme_progress, chapters_completed, themes_completed, total_pp, completed_themes")
 
       if (upError) {
-        console.error("[v0] Error fetching user_progress:", upError)
+        logger.error("[validate-stats] Error fetching user_progress:", upError)
         return NextResponse.json({ error: "Failed to fetch user progress", details: upError }, { status: 500 })
       }
 
@@ -239,7 +240,7 @@ export async function POST(request: NextRequest) {
             .eq("user_id", user.user_id)
 
           if (updateError) {
-            console.error(`[v0] Error updating user ${user.user_id}:`, updateError)
+            logger.error(`[validate-stats] Error updating user ${user.user_id}:`, updateError)
           }
         }
       }
@@ -281,7 +282,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid action. Use 'validate' or 'repair'" }, { status: 400 })
     }
   } catch (error) {
-    console.error("[v0] Validate-stats error:", error)
+    logger.error("[validate-stats] Validate-stats error:", error)
     return NextResponse.json({ error: "Internal server error", details: String(error) }, { status: 500 })
   }
 }

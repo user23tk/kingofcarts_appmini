@@ -1,4 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { logger } from "@/lib/debug/logger"
+import { requireDebugAuth } from "@/lib/security/debug-auth"
 
 export const dynamic = "force-dynamic"
 
@@ -8,6 +10,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const authCheck = await requireDebugAuth(request)
+    if (!authCheck.authorized) {
+      return authCheck.response!
+    }
+
     const botToken = process.env.TELEGRAM_BOT_TOKEN
     const secretToken = process.env.TELEGRAM_WEBHOOK_SECRET
     const appDomain = (process.env.APP_DOMAIN || "https://v0-beta-3-mini-app.vercel.app").replace(/\/$/, "")
@@ -19,7 +26,7 @@ export async function POST(request: NextRequest) {
     const steps = []
 
     // Step 1: Delete existing webhook to start fresh
-    console.log("[v0] Step 1: Deleting old webhook...")
+    logger.info("[fix-bot] Step 1: Deleting old webhook...")
     const deleteResponse = await fetch(
       `https://api.telegram.org/bot${botToken}/deleteWebhook?drop_pending_updates=true`,
     )
@@ -35,9 +42,9 @@ export async function POST(request: NextRequest) {
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
     // Step 2: Set new webhook with correct configuration
-    console.log("[v0] Step 2: Setting up new webhook...")
+    logger.info("[fix-bot] Step 2: Setting up new webhook...")
     const webhookUrl = `${appDomain}/api/telegram`
-    console.log("[v0] Webhook URL (normalized):", webhookUrl)
+    logger.info("[fix-bot] Webhook URL (normalized):", webhookUrl)
 
     const webhookResponse = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
       method: "POST",
@@ -60,7 +67,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Step 3: Configure bot commands
-    console.log("[v0] Step 3: Setting up bot commands...")
+    logger.info("[fix-bot] Step 3: Setting up bot commands...")
     const commands = [
       { command: "start", description: "🎭 Inizia l'avventura con King of Carts" },
       { command: "continue", description: "▶️ Continua la storia corrente" },
@@ -85,7 +92,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Step 4: Verify inline mode status
-    console.log("[v0] Step 4: Checking inline mode status...")
+    logger.info("[fix-bot] Step 4: Checking inline mode status...")
     const botInfoResponse = await fetch(`https://api.telegram.org/bot${botToken}/getMe`)
     const botInfo = await botInfoResponse.json()
     const inlineEnabled = botInfo.result?.supports_inline_queries
@@ -104,7 +111,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Step 5: Get final webhook info
-    console.log("[v0] Step 5: Getting final webhook info...")
+    logger.info("[fix-bot] Step 5: Getting final webhook info...")
     const finalWebhookResponse = await fetch(`https://api.telegram.org/bot${botToken}/getWebhookInfo`)
     const finalWebhookInfo = await finalWebhookResponse.json()
     steps.push({
@@ -142,7 +149,7 @@ export async function POST(request: NextRequest) {
           ],
     })
   } catch (error) {
-    console.error("[v0] Error in fix-bot:", error)
+    logger.error("[fix-bot] Error in fix-bot:", error)
     return NextResponse.json(
       {
         error: "Failed to fix bot configuration",

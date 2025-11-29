@@ -1,6 +1,5 @@
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
-export { createAdminClient } from "./admin"
 
 /**
  * Especially important if using Fluid compute: Don't put this client in a

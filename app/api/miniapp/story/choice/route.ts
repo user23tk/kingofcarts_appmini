@@ -237,33 +237,6 @@ export async function POST(request: NextRequest) {
 
     await sessionManager.incrementInteractionCount()
 
-    if (ppDelta > 0 && selectedChoice) {
-      try {
-        const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || undefined
-        const userAgent = request.headers.get("user-agent") || undefined
-
-        await PPValidator.auditPPGain({
-          user_id: userId,
-          theme: theme,
-          chapter_number: chapterNumber,
-          scene_index: sceneIndex,
-          choice_id: choiceId,
-          pp_gained: ppDelta,
-          session_total_pp: updatedSession.ppAccumulated,
-          user_agent: userAgent,
-          ip_address: ipAddress,
-        })
-
-        logger.debug("miniapp-story-choice", "PP audit recorded", { userId, ppDelta, sceneIndex, choiceId })
-      } catch (auditError) {
-        // Don't fail the request if audit fails, just log
-        logger.error("miniapp-story-choice", "Failed to record PP audit", {
-          error: auditError instanceof Error ? auditError.message : String(auditError),
-          userId,
-        })
-      }
-    }
-
     const nextSceneIndex = sceneIndex + 1
     const isLastScene = nextSceneIndex >= chapter.scenes.length
 

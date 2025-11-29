@@ -1,4 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { requireDebugAuth } from "@/lib/security/debug-auth"
+import { logger } from "@/lib/debug/logger"
 
 export const dynamic = "force-dynamic"
 
@@ -7,6 +9,11 @@ export const dynamic = "force-dynamic"
  * Verifies all steps are completed for production migration
  */
 export async function GET(request: NextRequest) {
+  const authCheck = await requireDebugAuth(request)
+  if (!authCheck.authorized) {
+    return authCheck.response!
+  }
+
   const checks = []
   let allPassed = true
 
@@ -179,6 +186,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
+    logger.error("Migration check failed", error)
     return NextResponse.json(
       {
         error: "Migration check failed",

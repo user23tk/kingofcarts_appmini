@@ -1,4 +1,4 @@
-import { createAdminClient } from "@/lib/supabase/admin"
+import { createClient } from "@/lib/supabase/server"
 import type { InlineKeyboardMarkup } from "./types"
 import { AdvancedRateLimiter } from "../security/rate-limiter"
 
@@ -99,7 +99,7 @@ export class TelegramBot {
   }
 
   async getOrCreateUser(telegramUser: any) {
-    const supabase = createAdminClient()
+    const supabase = await createClient()
 
     // Try to find existing user
     const { data: existingUser } = await supabase.from("users").select("*").eq("telegram_id", telegramUser.id).single()
@@ -133,7 +133,7 @@ export class TelegramBot {
     }
 
     console.log(`[v0] Creating new user ${telegramUser.id}`)
-    const { data: newUser, error: userError } = await supabase
+    const { data: newUser } = await supabase
       .from("users")
       .insert({
         telegram_id: telegramUser.id,
@@ -146,35 +146,6 @@ export class TelegramBot {
       .select()
       .single()
 
-    if (userError) {
-      console.error(`[v0] Failed to create user ${telegramUser.id}:`, userError)
-      throw new Error(`Failed to create user: ${userError.message}`)
-    }
-
-    if (!newUser) {
-      console.error(`[v0] No data returned after creating user ${telegramUser.id}`)
-      throw new Error("Failed to create user: no data returned")
-    }
-
-    console.log(`[v0] Creating initial user_progress for new user ${newUser.id}`)
-    const { error: progressError } = await supabase.from("user_progress").insert({
-      user_id: newUser.id,
-      current_theme: "fantasy", // Default theme
-      current_chapter: 1,
-      completed_themes: [],
-      chapters_completed: 0,
-      themes_completed: 0,
-      total_pp: 0,
-      theme_progress: {},
-    })
-
-    if (progressError) {
-      // Log but don't fail - user_progress can be created later
-      console.error(`[v0] Failed to create user_progress for user ${newUser.id}:`, progressError)
-    } else {
-      console.log(`[v0] Successfully created user_progress for user ${newUser.id}`)
-    }
-
     // Increment total users stat
     await supabase.rpc("increment_global_stat", {
       stat_name_param: "total_users",
@@ -184,6 +155,6 @@ export class TelegramBot {
   }
 
   async getSupabaseClient() {
-    return createAdminClient()
+    return await createClient()
   }
 }
