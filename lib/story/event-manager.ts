@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 export class EventManager {
   /**
    * Get the currently active event contest (with expiration check)
-   * Uses the consolidated get_active_event RPC
+   * Uses the consolidated get_active_event RPC with fallback to direct query
    */
   static async getActiveEvent() {
     const supabase = createAdminClient()
@@ -30,19 +30,26 @@ export class EventManager {
 
     if (error) {
       console.error("[v0] [EventManager] Error getting active event:", error)
-      return null
+      console.warn("[v0] [EventManager] RPC failed, attempting direct query fallback")
+      return await this.getActiveEventDirectQuery()
     }
 
     // Handle different response formats
     if (!data) {
       console.log("[v0] [EventManager] No data returned from RPC")
-      return null
+      console.warn("[v0] [EventManager] RPC returned no data, attempting direct query fallback")
+      return await this.getActiveEventDirectQuery()
     }
 
     // If data is array, get first element
     if (Array.isArray(data) && data.length > 0) {
       console.log("[v0] [EventManager] Returning first event from array:", data[0])
       return data[0]
+    }
+
+    if (Array.isArray(data) && data.length === 0) {
+      console.warn("[v0] [EventManager] RPC returned empty array, attempting direct query fallback")
+      return await this.getActiveEventDirectQuery()
     }
 
     // If data is a single object (not array)
@@ -53,6 +60,56 @@ export class EventManager {
 
     console.log("[v0] [EventManager] Empty or invalid response, returning null")
     return null
+  }
+
+  /**
+   * NEW METHOD: Direct query fallback when RPC fails
+   * Bypasses RPC and queries themes table directly
+   */
+  private static async getActiveEventDirectQuery() {
+    const supabase = createAdminClient()
+
+    console.log("[v0] [EventManager] Executing direct query fallback")
+
+    const now = new Date().toISOString()
+
+    const { data, error } = await supabase
+      .from("themes")
+      .select(
+        "id, name, title, description, emoji, event_emoji, pp_multiplier, event_start_date, event_end_date, is_active",
+      )
+      .eq("is_event", true)
+      .eq("is_active", true)
+      .or(`event_start_date.is.null,event_start_date.lte.${now}`)
+      .or(`event_end_date.is.null,event_end_date.gt.${now}`)
+      .order("event_start_date", { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (error) {
+      console.error("[v0] [EventManager] Direct query also failed:", error)
+      return null
+    }
+
+    if (!data) {
+      console.log("[v0] [EventManager] Direct query returned no active event")
+      return null
+    }
+
+    // Additional validation for start date
+    if (data.event_start_date && new Date(data.event_start_date) > new Date()) {
+      console.log("[v0] [EventManager] Event not started yet:", data.name)
+      return null
+    }
+
+    // Additional validation for end date
+    if (data.event_end_date && new Date(data.event_end_date) <= new Date()) {
+      console.log("[v0] [EventManager] Event has expired:", data.name)
+      return null
+    }
+
+    console.log("[v0] [EventManager] Direct query found active event:", data.name)
+    return data
   }
 
   /**

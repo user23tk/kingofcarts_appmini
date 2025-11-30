@@ -11,6 +11,7 @@ export async function GET() {
       "[v0] [/api/leaderboard/event] SUPABASE_URL:",
       process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 30) + "...",
     )
+    console.log("[v0] [/api/leaderboard/event] SERVICE_ROLE_KEY present:", !!process.env.SUPABASE_SERVICE_ROLE_KEY)
 
     // This ensures we use the same code path as the dashboard
     const activeEvent = await EventManager.getActiveEvent()
@@ -20,10 +21,16 @@ export async function GET() {
     if (!activeEvent) {
       console.log("[v0] [/api/leaderboard/event] No active event found")
       console.log("[v0] [/api/leaderboard/event] Check: is get_active_event RPC returning data in DB?")
+      console.log("[v0] [/api/leaderboard/event] Run: SELECT * FROM get_active_event();")
       return NextResponse.json(
         {
           activeEvent: null,
           players: [],
+          _debug: {
+            rpc_called: true,
+            fallback_tried: true,
+            timestamp: new Date().toISOString(),
+          },
         },
         {
           headers: {
@@ -39,6 +46,9 @@ export async function GET() {
       id: activeEvent.id,
       name: activeEvent.name,
       title: activeEvent.title,
+      is_active: activeEvent.is_active,
+      event_start_date: activeEvent.event_start_date,
+      event_end_date: activeEvent.event_end_date,
     })
 
     const themeKey = activeEvent.name
@@ -87,6 +97,10 @@ export async function GET() {
         activeEvent: null,
         players: [],
         error: "Failed to fetch event data",
+        _debug: {
+          error_message: error instanceof Error ? error.message : "Unknown error",
+          timestamp: new Date().toISOString(),
+        },
       },
       {
         status: 200,
