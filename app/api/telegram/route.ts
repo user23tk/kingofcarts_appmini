@@ -233,7 +233,9 @@ Apri la Mini App per vedere la classifica completa e il tuo posizionamento!`
       [
         {
           text: "🏆 Vedi Classifica",
-          web_app: { url: `${process.env.APP_DOMAIN || "https://v0-beta-3-mini-app.vercel.app"}?view=leaderboard` },
+          web_app: {
+            url: `${process.env.APP_DOMAIN || "https://v0-beta-3-mini-app.vercel.app"}?view=leaderboard`,
+          },
         },
       ],
     ],
@@ -263,9 +265,7 @@ Apri la Mini App per partecipare all'evento!`
       [
         {
           text: `${activeEvent.event_emoji || "🎉"} Partecipa all'Evento`,
-          web_app: {
-            url: `${process.env.APP_DOMAIN || "https://v0-beta-3-mini-app.vercel.app"}?event=${activeEvent.name}`,
-          },
+          url: `${process.env.APP_DOMAIN || "https://v0-beta-3-mini-app.vercel.app"}?event=${activeEvent.name}`,
         },
       ],
     ],
@@ -301,17 +301,15 @@ async function handleInlineQuery(inlineQuery: any) {
     const query = inlineQuery.query?.toLowerCase() || ""
     const userId = inlineQuery.from.id.toString()
 
-    console.log("[v0] Getting user stats for inline query...")
-    const userStats = await storyManager.getUserStats(userId)
-
-    console.log("[v0] User stats retrieved:", userStats)
-
     const playerName = inlineQuery.from.first_name || "Viaggiatore"
     const botName = process.env.BOT_DISPLAY_NAME || "King of Carts"
     const botUsername = process.env.BOT_USERNAME || "kingofcarts_betabot"
 
+    const miniAppUrl = process.env.MINIAPP_URL || `https://t.me/${botUsername}/app`
+
     console.log("[v0] Bot configuration - Display Name:", botName)
     console.log("[v0] Bot configuration - Username:", botUsername)
+    console.log("[v0] Mini App URL:", miniAppUrl)
 
     const results = []
     const inviteUrl = `https://t.me/${botUsername}?start=invite_${userId}`
@@ -329,12 +327,7 @@ async function handleInlineQuery(inlineQuery: any) {
       reply_markup: {
         inline_keyboard: [
           [{ text: "🎭 Inizia Avventura", url: inviteUrl }],
-          [
-            {
-              text: "🎮 Apri Mini App",
-              url: `https://t.me/${botUsername}/${process.env.BOT_DISPLAY_NAME?.toLowerCase().replace(/\s+/g, "") || "kingofcarts"}`,
-            },
-          ],
+          [{ text: "🎮 Apri Mini App", url: miniAppUrl }],
         ],
       },
     })
