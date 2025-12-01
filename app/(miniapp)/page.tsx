@@ -154,59 +154,64 @@ export default function MiniAppHome() {
 
         {dashboardData.activeEvents && dashboardData.activeEvents.length > 0 && (
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="mb-6">
-            <Card className="bg-gradient-to-br from-yellow-500/20 via-orange-500/20 to-red-500/20 backdrop-blur-sm border-2 border-yellow-500/50">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="text-5xl">{dashboardData.activeEvents[0].emoji}</div>
-                    <div>
-                      <CardTitle className="text-white text-xl">{dashboardData.activeEvents[0].title}</CardTitle>
-                      <CardDescription className="text-gray-300">
-                        {dashboardData.activeEvents[0].description || "Contest Speciale"}
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <Badge className="bg-yellow-500 text-black font-bold text-lg px-3 py-1">
+            <Card
+              className="cursor-pointer transition-all hover:shadow-xl active:scale-[0.98] bg-gradient-to-br from-yellow-500/20 via-orange-500/20 to-red-500/20 border-2 border-yellow-500/50"
+              onClick={async () => {
+                hapticFeedback("medium")
+                const event = dashboardData.activeEvents[0]
+                try {
+                  const response = await fetch(`/api/chapters?theme=${event.theme}`)
+                  const data = await response.json()
+                  
+                  if (data.success && data.chapters && data.chapters.length > 0) {
+                    router.push(`/story/${event.theme}`)
+                  } else {
+                    alert("🎄 Contest in preparazione! I capitoli verranno pubblicati a breve. Torna presto!")
+                  }
+                } catch (error) {
+                  alert("🎄 Contest in preparazione! I capitoli verranno pubblicati a breve. Torna presto!")
+                }
+              }}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between mb-2">
+                  <Badge variant="default" className="bg-yellow-500 text-black font-bold">
+                    <Trophy className="w-3 h-3 mr-1" />
+                    EVENTO ATTIVO
+                  </Badge>
+                  <Badge variant="secondary" className="bg-accent/50">
                     {dashboardData.activeEvents[0].multiplier}x PP
                   </Badge>
                 </div>
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-500 to-orange-500 shadow-lg">
+                      <span className="text-4xl">{dashboardData.activeEvents[0].emoji}</span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl mb-1">{dashboardData.activeEvents[0].title}</CardTitle>
+                      <CardDescription className="text-sm">
+                        {dashboardData.activeEvents[0].description || "Contest speciale con moltiplicatore PP!"}
+                      </CardDescription>
+                    </div>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {dashboardData.activeEvents[0].endsAt && (
-                  <div className="flex items-center gap-2 text-white">
-                    <Clock className="w-4 h-4" />
-                    <span className="text-sm">Termina il: </span>
+              <CardContent className="pt-0">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-background/50 backdrop-blur-sm">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Clock className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Termina il:</span>
                     <span className="font-semibold">
-                      {new Date(dashboardData.activeEvents[0].endsAt).toLocaleDateString("it-IT", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                      })}
+                      {dashboardData.activeEvents[0].endsAt
+                        ? new Date(dashboardData.activeEvents[0].endsAt).toLocaleDateString("it-IT")
+                        : "N/A"}
                     </span>
                   </div>
-                )}
-                <Button
-                  className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold"
-                  size="lg"
-                  onClick={async () => {
-                    hapticFeedback("medium")
-                    const event = dashboardData.activeEvents[0]
-                    try {
-                      const response = await fetch(`/api/chapters?theme=${event.theme}`)
-                      const data = await response.json()
-                      
-                      if (data.success && data.chapters && data.chapters.length > 0) {
-                        router.push(`/story/${event.theme}`)
-                      } else {
-                        alert("🎄 Contest in preparazione! I capitoli verranno pubblicati a breve. Torna presto!")
-                      }
-                    } catch (error) {
-                      alert("🎄 Contest in preparazione! I capitoli verranno pubblicati a breve. Torna presto!")
-                    }
-                  }}
-                >
-                  Gioca Ora →
-                </Button>
+                  <Button size="sm" className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold">
+                    Gioca Ora →
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </motion.div>
