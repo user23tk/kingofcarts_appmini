@@ -32,8 +32,11 @@ interface DashboardData {
   activeEvents: Array<{
     id: string
     theme: string
+    title: string
+    description?: string
+    emoji: string
     multiplier: number
-    endsAt: string
+    endsAt?: string
   }>
 }
 
@@ -115,7 +118,7 @@ export default function MiniAppHome() {
 
   return (
     <div className="relative min-h-screen pb-20">
-      <AnimatedBackground theme={dashboardData.activeSession?.theme || "fantasy"} intensity="low" variant="menu" />
+      <AnimatedBackground theme={(dashboardData.activeSession?.theme || "fantasy") as any} intensity="low" variant="menu" />
 
       <div className="relative z-10 p-4">
         <motion.div
@@ -153,55 +156,57 @@ export default function MiniAppHome() {
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="mb-6">
             <Card className="bg-gradient-to-br from-yellow-500/20 via-orange-500/20 to-red-500/20 backdrop-blur-sm border-2 border-yellow-500/50">
               <CardHeader>
-                <div className="flex items-center justify-between mb-2">
-                  <CardTitle className="flex items-center gap-2">
-                    <Zap className="w-5 h-5 text-yellow-500" />
-                    Contest Attivo!
-                  </CardTitle>
-                  <Badge className="bg-yellow-500 text-black font-bold">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="text-5xl">{dashboardData.activeEvents[0].emoji}</div>
+                    <div>
+                      <CardTitle className="text-white text-xl">{dashboardData.activeEvents[0].title}</CardTitle>
+                      <CardDescription className="text-gray-300">
+                        {dashboardData.activeEvents[0].description || "Contest Speciale"}
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <Badge className="bg-yellow-500 text-black font-bold text-lg px-3 py-1">
                     {dashboardData.activeEvents[0].multiplier}x PP
                   </Badge>
                 </div>
-                <CardDescription className="text-white/90">
-                  Guadagna più punti giocando al contest speciale
-                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-2">
-                {dashboardData.activeEvents.map((event) => {
-                  return (
-                    <div key={event.id} className="p-3 rounded-lg bg-background/80 backdrop-blur-sm">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="font-bold capitalize text-lg">{event.theme}</p>
-                        <Badge variant="default" className="bg-yellow-500 text-black">
-                          {event.multiplier}x PP
-                        </Badge>
-                      </div>
-                      {event.endsAt && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-                          <Clock className="w-4 h-4" />
-                          <span>
-                            Termina il{" "}
-                            {new Date(event.endsAt).toLocaleDateString("it-IT", {
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                            })}
-                          </span>
-                        </div>
-                      )}
-                      <Button
-                        className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold"
-                        onClick={() => {
-                          hapticFeedback("medium")
-                          router.push(`/story/${event.theme}`)
-                        }}
-                      >
-                        <Zap className="mr-2 h-4 w-4" />
-                        Gioca al Contest
-                      </Button>
-                    </div>
-                  )
-                })}
+              <CardContent className="space-y-4">
+                {dashboardData.activeEvents[0].endsAt && (
+                  <div className="flex items-center gap-2 text-white">
+                    <Clock className="w-4 h-4" />
+                    <span className="text-sm">Termina il: </span>
+                    <span className="font-semibold">
+                      {new Date(dashboardData.activeEvents[0].endsAt).toLocaleDateString("it-IT", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                      })}
+                    </span>
+                  </div>
+                )}
+                <Button
+                  className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold"
+                  size="lg"
+                  onClick={async () => {
+                    hapticFeedback("medium")
+                    const event = dashboardData.activeEvents[0]
+                    try {
+                      const response = await fetch(`/api/chapters?theme=${event.theme}`)
+                      const data = await response.json()
+                      
+                      if (data.success && data.chapters && data.chapters.length > 0) {
+                        router.push(`/story/${event.theme}`)
+                      } else {
+                        alert("🎄 Contest in preparazione! I capitoli verranno pubblicati a breve. Torna presto!")
+                      }
+                    } catch (error) {
+                      alert("🎄 Contest in preparazione! I capitoli verranno pubblicati a breve. Torna presto!")
+                    }
+                  }}
+                >
+                  Gioca Ora →
+                </Button>
               </CardContent>
             </Card>
           </motion.div>
