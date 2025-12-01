@@ -178,9 +178,9 @@ export default function MiniAppHome() {
                       <span className="text-4xl">{dashboardData.activeEvents[0].emoji}</span>
                     </div>
                     <div>
-                      <CardTitle className="text-xl mb-1">{dashboardData.activeEvents[0].title}</CardTitle>
+                      <CardTitle className="text-xl mb-1">Natale contest 2025</CardTitle>
                       <CardDescription className="text-sm">
-                        {dashboardData.activeEvents[0].description || "Contest speciale con moltiplicatore PP!"}
+                        un evento natalizio by kingofcarts.eth
                       </CardDescription>
                     </div>
                   </div>
@@ -192,9 +192,7 @@ export default function MiniAppHome() {
                     <Clock className="w-4 h-4 text-muted-foreground" />
                     <span className="text-muted-foreground">Termina il:</span>
                     <span className="font-semibold">
-                      {dashboardData.activeEvents[0].endsAt
-                        ? new Date(dashboardData.activeEvents[0].endsAt).toLocaleDateString("it-IT")
-                        : "N/A"}
+                      06/01/2026
                     </span>
                   </div>
                   <Button size="sm" className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold">
