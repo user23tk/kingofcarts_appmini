@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState } from "react"
+
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/miniapp/auth-context"
@@ -8,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, Trophy, Medal, Crown, Users, BookOpen, Target, Zap, Clock, RefreshCw } from "lucide-react"
+import { ArrowLeft, Trophy, Medal, Crown, Users, BookOpen, Target, Zap, Clock } from "lucide-react"
 import { useBackButton, hapticFeedback } from "@/lib/telegram/webapp-client"
 import { motion } from "framer-motion"
 import useSWR from "swr"
@@ -55,10 +56,15 @@ interface ActiveEvent {
 }
 
 const fetcher = async (url: string) => {
-  const response = await fetch(url, {
+  const timestamp = Date.now()
+  const urlWithTimestamp = url.includes("?") ? `${url}&_ts=${timestamp}` : `${url}?_ts=${timestamp}`
+
+  const response = await fetch(urlWithTimestamp, {
     cache: "no-store",
     headers: {
-      "Cache-Control": "no-cache",
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
     },
   })
   if (!response.ok) {
@@ -71,7 +77,6 @@ export default function LeaderboardPage() {
   const router = useRouter()
   const { user, isLoading } = useAuth()
   const [activeTab, setActiveTab] = useState<"general" | "event">("general")
-  const [isRefreshing, setIsRefreshing] = useState(false)
 
   useBackButton(() => {
     router.push("/")
@@ -81,11 +86,10 @@ export default function LeaderboardPage() {
     data: leaderboardData,
     error: leaderboardError,
     isLoading: leaderboardLoading,
-    mutate: mutateLeaderboard,
   } = useSWR(user?.id ? `/api/miniapp/leaderboard?userId=${user.id}&limit=100` : null, fetcher, {
     revalidateOnFocus: true,
     revalidateOnReconnect: true,
-    dedupingInterval: 30000,
+    dedupingInterval: 30000, // 30 seconds
   })
 
   const {
@@ -94,21 +98,11 @@ export default function LeaderboardPage() {
     isLoading: eventLoading,
     mutate: mutateEvent,
   } = useSWR("/api/leaderboard/event", fetcher, {
-    refreshInterval: 30000,
+    refreshInterval: 30000, // Poll every 30 seconds (was 10s)
     revalidateOnFocus: true,
     revalidateOnReconnect: true,
     dedupingInterval: 5000,
   })
-
-  const handleManualRefresh = useCallback(async () => {
-    setIsRefreshing(true)
-    hapticFeedback("light")
-    try {
-      await Promise.all([mutateLeaderboard(), mutateEvent()])
-    } finally {
-      setIsRefreshing(false)
-    }
-  }, [mutateLeaderboard, mutateEvent])
 
   const activeEvent = eventData?.activeEvent || null
   const eventLeaderboard: EventLeaderboardEntry[] = eventData?.players || []
@@ -124,9 +118,12 @@ export default function LeaderboardPage() {
   }, [eventData])
 
   useEffect(() => {
+    // If there's an active event, default to event tab
     if (activeEvent && activeTab === "general") {
       setActiveTab("event")
-    } else if (!activeEvent && activeTab === "event") {
+    }
+    // If no active event and on event tab, switch to general
+    else if (!activeEvent && activeTab === "event") {
       setActiveTab("general")
     }
   }, [activeEvent])
@@ -149,35 +146,24 @@ export default function LeaderboardPage() {
       <div className="absolute inset-0 bg-[#17212B]" />
 
       <div className="relative z-10 p-4">
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-white hover:bg-white/10"
-              onClick={() => {
-                hapticFeedback("light")
-                router.push("/")
-              }}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold text-white">Leaderboard</h1>
-              <p className="text-sm text-gray-400">
-                {activeEvent ? "Contest e classifica globale" : "Top players worldwide"}
-              </p>
-            </div>
-          </div>
+        <div className="mb-6 flex items-center space-x-4">
           <Button
             variant="ghost"
             size="icon"
             className="text-white hover:bg-white/10"
-            onClick={handleManualRefresh}
-            disabled={isRefreshing}
+            onClick={() => {
+              hapticFeedback("light")
+              router.push("/")
+            }}
           >
-            <RefreshCw className={`h-5 w-5 ${isRefreshing ? "animate-spin" : ""}`} />
+            <ArrowLeft className="h-5 w-5" />
           </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-white">Leaderboard</h1>
+            <p className="text-sm text-gray-400">
+              {activeEvent ? "Contest e classifica globale" : "Top players worldwide"}
+            </p>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "general" | "event")} className="space-y-6">
@@ -197,6 +183,7 @@ export default function LeaderboardPage() {
           </TabsList>
 
           <TabsContent value="general" className="space-y-6">
+            {/* ... existing code for general tab ... */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
               <Card className="bg-[#242F3D] border-[#2C3847]">
                 <CardHeader>
@@ -363,7 +350,13 @@ export default function LeaderboardPage() {
           </TabsContent>
 
           <TabsContent value="event" className="space-y-6">
-            {activeEvent && (
+            {!activeEvent ? (
+              <div className="text-center py-12">
+                <Zap className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                <p className="text-xl text-white font-semibold">Nessun Contest Attivo</p>
+                <p className="text-gray-400 mt-2">Torna presto per nuovi contest speciali!</p>
+              </div>
+            ) : (
               <>
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                   <Card className="bg-gradient-to-br from-yellow-500/20 via-orange-500/20 to-red-500/20 border-2 border-yellow-500/50">
@@ -382,12 +375,34 @@ export default function LeaderboardPage() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="flex items-center gap-2 text-white">
-                        <Clock className="w-4 h-4" />
-                        <span className="text-sm">Termina il: </span>
-                        <span className="font-semibold">
-                          {new Date(activeEvent.event_end_date).toLocaleDateString()}
-                        </span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-white">
+                          <Clock className="w-4 h-4" />
+                          <span className="text-sm">Termina il: </span>
+                          <span className="font-semibold">
+                            {new Date(activeEvent.event_end_date).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => mutateEvent()}
+                          className="flex items-center gap-2 px-3 py-1 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+                          disabled={eventLoading}
+                        >
+                          <svg
+                            className={`w-4 h-4 ${eventLoading ? "animate-spin" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                            />
+                          </svg>
+                          <span className="text-sm">Aggiorna</span>
+                        </button>
                       </div>
                     </CardContent>
                   </Card>
@@ -402,7 +417,7 @@ export default function LeaderboardPage() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      {!hasEventPlayers ? (
+                      {eventLeaderboard.length === 0 ? (
                         <div className="text-center py-8">
                           <Zap className="w-12 h-12 text-gray-600 mx-auto mb-4" />
                           <p className="text-gray-400">Nessuno ha ancora giocato a questo contest!</p>
