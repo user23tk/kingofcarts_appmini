@@ -160,9 +160,9 @@ export default function MiniAppHome() {
                 hapticFeedback("medium")
                 const event = dashboardData.activeEvents[0]
                 try {
-                  const response = await fetch(`/api/chapters?theme=${event.theme}`)
+                  const response = await fetch(`/api/chapters?theme=${encodeURIComponent(event.theme)}`)
                   const data = await response.json()
-                  
+
                   if (data.success && data.chapters && data.chapters.length > 0) {
                     router.push(`/story/${event.theme}`)
                   } else {
