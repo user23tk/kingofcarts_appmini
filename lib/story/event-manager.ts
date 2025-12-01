@@ -3,20 +3,14 @@ import { createAdminClient } from "@/lib/supabase/admin"
 export class EventManager {
   /**
    * Get the currently active event contest (with expiration check)
-   * Uses the consolidated get_active_event RPC with fallback to direct query
+   * Uses the consolidated get_active_event RPC
    */
   static async getActiveEvent() {
     const supabase = createAdminClient()
 
     console.log("[EventManager] getActiveEvent called")
 
-    // First deactivate any expired events
-    const { error: deactivateError } = await supabase.rpc("deactivate_expired_events")
-    if (deactivateError) {
-      console.error("[EventManager] deactivate_expired_events failed:", deactivateError)
-    }
-
-    // Then get the active event using consolidated RPC
+    // Get the active event using consolidated RPC
     const { data, error } = await supabase.rpc("get_active_event")
 
     if (error) {
@@ -24,8 +18,8 @@ export class EventManager {
       return null
     }
 
-    if (!data) {
-      console.log("[EventManager] No data returned from RPC")
+    if (!data || (Array.isArray(data) && data.length === 0)) {
+      console.log("[EventManager] No active event")
       return null
     }
 
@@ -39,14 +33,10 @@ export class EventManager {
         description: data[0].theme_description,
         event_start_date: data[0].start_date,
         event_end_date: data[0].end_date,
+        pp_multiplier: data[0].pp_multiplier || 1.0, // Added pp_multiplier from RPC
         is_active: true,
         is_event: true,
       }
-    }
-
-    if (Array.isArray(data) && data.length === 0) {
-      console.log("[EventManager] No active event (empty array)")
-      return null
     }
 
     // If data is a single object (shouldn't happen with TABLE return type, but handle it)
@@ -59,6 +49,7 @@ export class EventManager {
         description: data.theme_description,
         event_start_date: data.start_date,
         event_end_date: data.end_date,
+        pp_multiplier: data.pp_multiplier || 1.0, // Added pp_multiplier from RPC
         is_active: true,
         is_event: true,
       }
@@ -97,7 +88,7 @@ export class EventManager {
       return false
     }
 
-    if (data.event_end_date && new Date(data.event_end_date) <= now) {
+    if (data.event_end_date && new Date(data.event_end_date) < now) {
       console.log(`[EventManager] Event ${themeKey} has expired (ended: ${data.event_end_date})`)
       return false
     }
@@ -169,7 +160,7 @@ export class EventManager {
       return 1.0
     }
 
-    if (theme.event_end_date && new Date(theme.event_end_date) <= now) {
+    if (theme.event_end_date && new Date(theme.event_end_date) < now) {
       return 1.0
     }
 
