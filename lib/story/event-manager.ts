@@ -3,23 +3,81 @@ import { createAdminClient } from "@/lib/supabase/admin"
 export class EventManager {
   /**
    * Get the currently active event contest (with expiration check)
-   * Uses the consolidated get_active_event RPC
+   * Uses the consolidated get_active_event RPC with fallback to direct query
    */
   static async getActiveEvent() {
     const supabase = createAdminClient()
 
     console.log("[EventManager] getActiveEvent called")
 
+    // NOTA: deactivate_expired_events rimossa - la logica di scadenza 
+    // è già gestita nel WHERE della funzione get_active_event()
+
     // Get the active event using consolidated RPC
     const { data, error } = await supabase.rpc("get_active_event")
+
+    console.log("[EventManager] RPC get_active_event RAW response:", { 
+      data: JSON.stringify(data), 
+      error: error ? JSON.stringify(error) : null,
+      dataType: typeof data,
+      isArray: Array.isArray(data),
+      dataLength: Array.isArray(data) ? data.length : 'N/A'
+    })
+
+    // Se non c'è errore ma data è vuoto/null, prova query diretta
+    if (!error && (!data || (Array.isArray(data) && data.length === 0))) {
+      console.log("[EventManager] RPC returned empty, trying direct query...")
+      const { data: directData, error: directError } = await supabase
+        .from("themes")
+        .select("name, title, description, event_start_date, event_end_date, pp_multiplier, is_event, is_active")
+        .eq("is_event", true)
+        .eq("is_active", true)
+        .order("event_start_date", { ascending: false })
+        .limit(1)
+      
+      console.log("[EventManager] Direct query result:", {
+        data: JSON.stringify(directData),
+        error: directError ? JSON.stringify(directError) : null
+      })
+      
+      if (directData && directData.length > 0) {
+        const theme = directData[0]
+        const now = new Date()
+        const startOk = !theme.event_start_date || new Date(theme.event_start_date) <= now
+        const endOk = !theme.event_end_date || new Date(theme.event_end_date) > now
+        
+        console.log("[EventManager] Direct query found:", {
+          name: theme.name,
+          startOk,
+          endOk,
+          event_start_date: theme.event_start_date,
+          event_end_date: theme.event_end_date,
+          now: now.toISOString()
+        })
+        
+        if (startOk && endOk) {
+          return {
+            id: theme.name,
+            name: theme.name,
+            title: theme.title,
+            description: theme.description,
+            event_start_date: theme.event_start_date,
+            event_end_date: theme.event_end_date,
+            pp_multiplier: theme.pp_multiplier || 1.0,
+            is_active: true,
+            is_event: true,
+          }
+        }
+      }
+    }
 
     if (error) {
       console.error("[EventManager] Error getting active event:", error)
       return null
     }
 
-    if (!data || (Array.isArray(data) && data.length === 0)) {
-      console.log("[EventManager] No active event")
+    if (!data) {
+      console.log("[EventManager] No data returned from RPC")
       return null
     }
 
@@ -27,16 +85,21 @@ export class EventManager {
     if (Array.isArray(data) && data.length > 0) {
       console.log("[EventManager] Active event found:", data[0].theme_id)
       return {
-        id: data[0].theme_id, // For backward compatibility with old code
+        id: data[0].theme_id,
         name: data[0].theme_id,
         title: data[0].theme_name,
         description: data[0].theme_description,
         event_start_date: data[0].start_date,
         event_end_date: data[0].end_date,
-        pp_multiplier: data[0].pp_multiplier || 1.0, // Added pp_multiplier from RPC
+        pp_multiplier: parseFloat(data[0].pp_multiplier) || 1.0,
         is_active: true,
         is_event: true,
       }
+    }
+
+    if (Array.isArray(data) && data.length === 0) {
+      console.log("[EventManager] No active event (empty array)")
+      return null
     }
 
     // If data is a single object (shouldn't happen with TABLE return type, but handle it)
@@ -49,7 +112,7 @@ export class EventManager {
         description: data.theme_description,
         event_start_date: data.start_date,
         event_end_date: data.end_date,
-        pp_multiplier: data.pp_multiplier || 1.0, // Added pp_multiplier from RPC
+        pp_multiplier: parseFloat(data.pp_multiplier) || 1.0,
         is_active: true,
         is_event: true,
       }
