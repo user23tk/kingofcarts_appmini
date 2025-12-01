@@ -104,13 +104,14 @@ export class EventManager {
    */
   private static normalizeEventResponse(event: Record<string, unknown>): ActiveEvent {
     // Supporta entrambi i formati: vecchio (name/title) e nuovo (theme_id/theme_name)
-    const themeId = (event.theme_id || event.name) as string
-    const themeName = (event.theme_name || event.title) as string
-    const themeDesc = (event.theme_description || event.description) as string | undefined
-    const startDate = (event.start_date || event.event_start_date) as string | undefined
-    const endDate = (event.end_date || event.event_end_date) as string | undefined
+    // PREFERIRE SEMPRE 'name' se disponibile perché è la chiave canonica (es. "natale")
+    const themeId = (event.name || event.theme_id) as string
+    const themeName = (event.title || event.theme_name) as string
+    const themeDesc = (event.description || event.theme_description) as string | undefined
+    const startDate = (event.event_start_date || event.start_date) as string | undefined
+    const endDate = (event.event_end_date || event.end_date) as string | undefined
 
-    console.log("Evento attivo trovato", themeId)
+    console.log("Evento attivo trovato:", themeId)
 
     return {
       id: themeId,
@@ -122,6 +123,8 @@ export class EventManager {
       pp_multiplier: parseFloat(String(event.pp_multiplier)) || 1.0,
       is_active: true,
       is_event: true,
+      event_emoji: (event.event_emoji || event.emoji) as string,
+      emoji: (event.emoji || event.event_emoji) as string
     }
   }
 
@@ -154,18 +157,50 @@ export class EventManager {
   static async getEventLeaderboard(themeKey: string, limit = 100): Promise<EventPlayer[]> {
     const supabase = createAdminClient()
 
-    const { data, error } = await supabase.rpc("get_event_leaderboard_v2", {
-      p_theme: themeKey,
-      p_limit: limit,
-    })
+    // 1. Fetch canonical theme name to ensure we query the correct leaderboard
+    const { data: themeData } = await supabase
+      .from("themes")
+      .select("name")
+      .ilike("name", themeKey)
+      .single()
 
-    if (error) {
-      console.error("Errore get_event_leaderboard_v2", error)
+    const canonicalName = themeData?.name || themeKey
+    console.log(`[EventManager] Fetching leaderboard for: '${canonicalName}' (input: '${themeKey}')`)
+
+    // Use direct query as requested by user to ensure data consistency
+    // This bypasses the RPC which was returning incorrect data
+    const { data: directData, error: directError } = await supabase
+      .from("event_leaderboard")
+      .select(`
+        total_pp,
+        chapters_completed,
+        last_updated,
+        user_id,
+        users (
+          first_name
+        )
+      `)
+      .eq("theme", canonicalName)
+      .order("total_pp", { ascending: false })
+      .limit(limit)
+
+    if (directError) {
+      console.error("Errore query diretta leaderboard", directError)
       return []
     }
 
-    console.log(`Leaderboard caricata: ${data?.length || 0} giocatori`)
-    return data || []
+    // Map direct query result to EventPlayer interface
+    const mappedData: EventPlayer[] = directData.map((row: any, index: number) => ({
+      rank: index + 1,
+      user_id: row.user_id,
+      first_name: row.users?.first_name || "Anonymous",
+      total_pp: row.total_pp,
+      chapters_completed: row.chapters_completed,
+      last_updated: row.last_updated
+    }))
+
+    console.log(`Leaderboard caricata (Direct): ${mappedData.length} giocatori`)
+    return mappedData
   }
 
   /**
