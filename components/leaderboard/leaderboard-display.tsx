@@ -41,26 +41,17 @@ export function LeaderboardDisplay() {
       setLoading(true)
       setError(null)
 
-      console.log("[v0] [LEADERBOARD] Starting fetch...")
-
-      const playersResponse = await fetch("/api/miniapp/leaderboard")
-
-      console.log("[v0] [LEADERBOARD] Players response:", playersResponse.status)
+      const playersResponse = await fetch(`/api/miniapp/leaderboard?_ts=${Date.now()}`)
 
       if (!playersResponse.ok) {
         const playersError = await playersResponse.text()
-        console.error("[v0] [LEADERBOARD] API Error:", playersError)
         throw new Error(`Failed to fetch leaderboard data: ${playersError}`)
       }
 
       const playersData = await playersResponse.json()
-
-      console.log("[v0] [LEADERBOARD] Players data:", playersData)
-
       setPlayers(playersData.rankings || [])
       setLastUpdated(new Date())
     } catch (err) {
-      console.error("[v0] [LEADERBOARD] Fetch error:", err)
       setError(err instanceof Error ? err.message : "Unknown error")
     } finally {
       setLoading(false)
@@ -71,7 +62,7 @@ export function LeaderboardDisplay() {
     try {
       setEventLoading(true)
 
-      const eventResponse = await fetch("/api/leaderboard/event")
+      const eventResponse = await fetch(`/api/leaderboard/event?_ts=${Date.now()}`)
 
       if (!eventResponse.ok) {
         setActiveEvent(null)
@@ -89,7 +80,6 @@ export function LeaderboardDisplay() {
         setEventPlayers([])
       }
     } catch (err) {
-      console.error("[v0] [LEADERBOARD] Event fetch error:", err)
       setActiveEvent(null)
       setEventPlayers([])
     } finally {
@@ -241,11 +231,10 @@ export function LeaderboardDisplay() {
                   {players.map((player) => (
                     <div
                       key={player.userId}
-                      className={`flex items-center space-x-4 p-4 rounded-lg border transition-all duration-200 ${
-                        player.rank <= 3
+                      className={`flex items-center space-x-4 p-4 rounded-lg border transition-all duration-200 ${player.rank <= 3
                           ? "bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-yellow-500/30 shadow-lg"
                           : "bg-white/5 border-white/10 hover:bg-white/10"
-                      }`}
+                        }`}
                     >
                       <div className="flex-shrink-0">{getRankIcon(player.rank)}</div>
 
@@ -267,7 +256,7 @@ export function LeaderboardDisplay() {
                         </div>
                       </div>
 
-                      <div className="text-right text-sm text-white/60">{formatLastActive(player.lastActive)}</div>
+                      <div className="text-right text-sm text-white/60">{formatLastActive(player.lastActive || new Date().toISOString())}</div>
                     </div>
                   ))}
                 </div>
@@ -355,11 +344,10 @@ export function LeaderboardDisplay() {
                   {eventPlayers.map((player) => (
                     <div
                       key={player.user_id}
-                      className={`flex items-center space-x-4 p-4 rounded-lg border transition-all duration-200 ${
-                        player.rank <= 3
+                      className={`flex items-center space-x-4 p-4 rounded-lg border transition-all duration-200 ${player.rank <= 3
                           ? "bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-yellow-500/30 shadow-lg"
                           : "bg-white/5 border-white/10 hover:bg-white/10"
-                      }`}
+                        }`}
                     >
                       <div className="flex-shrink-0">{getRankIcon(player.rank)}</div>
 
