@@ -6,23 +6,21 @@ export const runtime = "nodejs"
 
 export async function GET() {
   try {
-    console.log("[v0] [/api/leaderboard/event] Starting request")
+    console.log("[/api/leaderboard/event] Starting request")
 
-    // This ensures we use the same code path as the dashboard
     const activeEvent = await EventManager.getActiveEvent()
 
-    console.log("[v0] [/api/leaderboard/event] activeEvent result:", activeEvent ? "found" : "null")
+    console.log("[/api/leaderboard/event] activeEvent result:", activeEvent ? "found" : "null")
 
     if (!activeEvent) {
-      console.log("[v0] [/api/leaderboard/event] No active event found")
+      console.log("[/api/leaderboard/event] No active event found")
       return NextResponse.json(
         {
           activeEvent: null,
           players: [],
           _debug: {
-            rpc_called: true,
-            fallback_tried: true,
             timestamp: new Date().toISOString(),
+            message: "No active event from RPC",
           },
         },
         {
@@ -35,13 +33,9 @@ export async function GET() {
       )
     }
 
-    console.log("[v0] [/api/leaderboard/event] Active event found:", {
-      id: activeEvent.id,
+    console.log("[/api/leaderboard/event] Active event found:", {
       name: activeEvent.name,
       title: activeEvent.title,
-      is_active: activeEvent.is_active,
-      event_start_date: activeEvent.event_start_date,
-      event_end_date: activeEvent.event_end_date,
     })
 
     const themeKey = activeEvent.name
@@ -49,13 +43,9 @@ export async function GET() {
     let players: any[] = []
     try {
       players = await EventManager.getEventLeaderboard(themeKey, 100)
-      console.log("[v0] [/api/leaderboard/event] Event leaderboard players count:", players.length)
-
-      if (players.length > 0) {
-        console.log("[v0] [/api/leaderboard/event] First player sample:", JSON.stringify(players[0]))
-      }
+      console.log("[/api/leaderboard/event] Event leaderboard players count:", players.length)
     } catch (leaderboardError) {
-      console.error("[v0] [/api/leaderboard/event] Error fetching event leaderboard:", leaderboardError)
+      console.error("[/api/leaderboard/event] Error fetching event leaderboard:", leaderboardError)
       players = []
     }
 
@@ -65,8 +55,8 @@ export async function GET() {
           id: activeEvent.id,
           theme_key: themeKey,
           event_name: activeEvent.title || activeEvent.name || themeKey,
-          event_emoji: activeEvent.event_emoji || activeEvent.emoji || "🎮",
-          pp_multiplier: activeEvent.pp_multiplier || 1.0,
+          event_emoji: (activeEvent as any).event_emoji || (activeEvent as any).emoji || "🎄",
+          pp_multiplier: (activeEvent as any).pp_multiplier || 1.5,
           event_end_date: activeEvent.event_end_date,
           description: activeEvent.description,
         },
@@ -93,7 +83,7 @@ export async function GET() {
       },
     )
   } catch (error) {
-    console.error("[v0] [/api/leaderboard/event] Error:", error)
+    console.error("[/api/leaderboard/event] Error:", error)
     return NextResponse.json(
       {
         activeEvent: null,

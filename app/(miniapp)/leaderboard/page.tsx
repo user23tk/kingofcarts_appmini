@@ -1,7 +1,6 @@
 "use client"
 
-import { useState } from "react"
-
+import { useState, useCallback } from "react"
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/miniapp/auth-context"
@@ -9,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, Trophy, Medal, Crown, Users, BookOpen, Target, Zap, Clock } from "lucide-react"
+import { ArrowLeft, Trophy, Medal, Crown, Users, BookOpen, Target, Zap, Clock, RefreshCw } from "lucide-react"
 import { useBackButton, hapticFeedback } from "@/lib/telegram/webapp-client"
 import { motion } from "framer-motion"
 import useSWR from "swr"
@@ -72,6 +71,7 @@ export default function LeaderboardPage() {
   const router = useRouter()
   const { user, isLoading } = useAuth()
   const [activeTab, setActiveTab] = useState<"general" | "event">("general")
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   useBackButton(() => {
     router.push("/")
@@ -81,22 +81,34 @@ export default function LeaderboardPage() {
     data: leaderboardData,
     error: leaderboardError,
     isLoading: leaderboardLoading,
+    mutate: mutateLeaderboard,
   } = useSWR(user?.id ? `/api/miniapp/leaderboard?userId=${user.id}&limit=100` : null, fetcher, {
     revalidateOnFocus: true,
     revalidateOnReconnect: true,
-    dedupingInterval: 30000, // 30 seconds
+    dedupingInterval: 30000,
   })
 
   const {
     data: eventData,
     error: eventError,
     isLoading: eventLoading,
+    mutate: mutateEvent,
   } = useSWR("/api/leaderboard/event", fetcher, {
-    refreshInterval: 10000, // Poll every 10 seconds
+    refreshInterval: 30000,
     revalidateOnFocus: true,
     revalidateOnReconnect: true,
-    dedupingInterval: 5000, // 5 seconds
+    dedupingInterval: 5000,
   })
+
+  const handleManualRefresh = useCallback(async () => {
+    setIsRefreshing(true)
+    hapticFeedback("light")
+    try {
+      await Promise.all([mutateLeaderboard(), mutateEvent()])
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [mutateLeaderboard, mutateEvent])
 
   const activeEvent = eventData?.activeEvent || null
   const eventLeaderboard: EventLeaderboardEntry[] = eventData?.players || []
@@ -112,12 +124,9 @@ export default function LeaderboardPage() {
   }, [eventData])
 
   useEffect(() => {
-    // If there's an active event, default to event tab
     if (activeEvent && activeTab === "general") {
       setActiveTab("event")
-    }
-    // If no active event and on event tab, switch to general
-    else if (!activeEvent && activeTab === "event") {
+    } else if (!activeEvent && activeTab === "event") {
       setActiveTab("general")
     }
   }, [activeEvent])
@@ -140,24 +149,35 @@ export default function LeaderboardPage() {
       <div className="absolute inset-0 bg-[#17212B]" />
 
       <div className="relative z-10 p-4">
-        <div className="mb-6 flex items-center space-x-4">
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-white/10"
+              onClick={() => {
+                hapticFeedback("light")
+                router.push("/")
+              }}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold text-white">Leaderboard</h1>
+              <p className="text-sm text-gray-400">
+                {activeEvent ? "Contest e classifica globale" : "Top players worldwide"}
+              </p>
+            </div>
+          </div>
           <Button
             variant="ghost"
             size="icon"
             className="text-white hover:bg-white/10"
-            onClick={() => {
-              hapticFeedback("light")
-              router.push("/")
-            }}
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
           >
-            <ArrowLeft className="h-5 w-5" />
+            <RefreshCw className={`h-5 w-5 ${isRefreshing ? "animate-spin" : ""}`} />
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-white">Leaderboard</h1>
-            <p className="text-sm text-gray-400">
-              {activeEvent ? "Contest e classifica globale" : "Top players worldwide"}
-            </p>
-          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "general" | "event")} className="space-y-6">
@@ -177,7 +197,6 @@ export default function LeaderboardPage() {
           </TabsList>
 
           <TabsContent value="general" className="space-y-6">
-            {/* ... existing code for general tab ... */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
               <Card className="bg-[#242F3D] border-[#2C3847]">
                 <CardHeader>

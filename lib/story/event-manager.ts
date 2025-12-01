@@ -98,13 +98,13 @@ export class EventManager {
 
     // Additional validation for start date
     if (data.event_start_date && new Date(data.event_start_date) > new Date()) {
-      console.log("[v0] [EventManager] Event not started yet:", data.name)
+      console.log(`[v0] Event ${data.name} has not started yet (starts: ${data.event_start_date})`)
       return null
     }
 
     // Additional validation for end date
     if (data.event_end_date && new Date(data.event_end_date) <= new Date()) {
-      console.log("[v0] [EventManager] Event has expired:", data.name)
+      console.log(`[v0] Event ${data.name} has expired (ended: ${data.event_end_date})`)
       return null
     }
 
