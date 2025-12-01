@@ -4,7 +4,6 @@ import { SessionManager } from "@/lib/story/session-manager"
 import { PPValidator } from "@/lib/security/pp-validator"
 import { requireTelegramAuth } from "@/lib/miniapp/auth-middleware"
 import { AdvancedRateLimiter } from "@/lib/security/rate-limiter"
-import { logger } from "@/lib/debug/logger"
 import { QueryCache } from "@/lib/cache/query-cache"
 
 export const dynamic = "force-dynamic"
@@ -24,45 +23,33 @@ export async function POST(request: NextRequest) {
     const { theme, chapterNumber, sceneIndex, choiceId } = auth.body || {}
 
     if (!theme || chapterNumber === undefined || sceneIndex === undefined || !choiceId) {
-      logger.warn("miniapp-story-choice", "Missing required fields", { theme, chapterNumber, sceneIndex, choiceId })
+      console.warn("miniapp-story-choice", "Missing required fields", { theme, chapterNumber, sceneIndex, choiceId })
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
-    // Previously: 2 calls (check without count, then count after success)
-    // Now: 1 call that checks AND counts atomically
-    const rateLimitCheck = await AdvancedRateLimiter.checkRateLimit(userId, undefined, true)
-    if (!rateLimitCheck.allowed) {
-      logger.warn("miniapp-story-choice", "Rate limit exceeded", { userId, reason: rateLimitCheck.reason })
-      return NextResponse.json(
-        {
-          error: "Rate limit exceeded",
-          reason: rateLimitCheck.reason,
-          resetTime: rateLimitCheck.resetTime,
-        },
-        { status: 429 },
-      )
-    }
+    // Rate limit check disabled
+    // const rateLimitCheck = await AdvancedRateLimiter.checkRateLimit(userId, undefined, true)
 
     const storyManager = new StoryManager()
     const sessionManager = new SessionManager()
 
-    logger.debug("miniapp-story-choice", "Processing choice", { userId, theme, chapterNumber, sceneIndex, choiceId })
+    console.debug("miniapp-story-choice", "Processing choice", { userId, theme, chapterNumber, sceneIndex, choiceId })
 
     const session = sessionManager.getSession(userId)
     if (!session) {
-      logger.warn("miniapp-story-choice", "Session not found", { userId })
+      console.warn("miniapp-story-choice", "Session not found", { userId })
       return NextResponse.json({ error: "Session expired. Please restart the story." }, { status: 400 })
     }
 
     const chapter = await storyManager.getChapter(theme, chapterNumber)
     if (!chapter) {
-      logger.warn("miniapp-story-choice", "Chapter not found", { theme, chapterNumber })
+      console.warn("miniapp-story-choice", "Chapter not found", { theme, chapterNumber })
       return NextResponse.json({ error: "Chapter not found" }, { status: 404 })
     }
 
     const currentScene = chapter.scenes[sceneIndex]
     if (!currentScene) {
-      logger.warn("miniapp-story-choice", "Invalid scene", { sceneIndex, totalScenes: chapter.scenes.length })
+      console.warn("miniapp-story-choice", "Invalid scene", { sceneIndex, totalScenes: chapter.scenes.length })
       return NextResponse.json({ error: "Invalid scene" }, { status: 400 })
     }
 
@@ -72,7 +59,7 @@ export async function POST(request: NextRequest) {
     const hasChoices = currentScene.choices && currentScene.choices.length > 0
     const isNarrativeScene = !hasChoices
 
-    logger.debug("miniapp-story-choice", "Scene type analyzed", {
+    console.debug("miniapp-story-choice", "Scene type analyzed", {
       sceneIndex,
       isNarrativeScene,
       hasChoices,
@@ -94,7 +81,7 @@ export async function POST(request: NextRequest) {
 
       if (!isNarrativeScene) {
         // ERROR: "continue" su scena con scelte
-        logger.warn("miniapp-story-choice", "Invalid continue on choice scene", {
+        console.warn("miniapp-story-choice", "Invalid continue on choice scene", {
           userId,
           theme,
           chapterNumber,
@@ -123,7 +110,7 @@ export async function POST(request: NextRequest) {
       // VALID: "continue" su scena narrativa
       ppDelta = 0
 
-      logger.debug("miniapp-story-choice", "Valid continue on narrative scene", {
+      console.debug("miniapp-story-choice", "Valid continue on narrative scene", {
         userId,
         sceneIndex,
         ppDelta: 0,
@@ -135,7 +122,7 @@ export async function POST(request: NextRequest) {
 
       if (isNarrativeScene) {
         // ERROR: Choice su scena narrativa
-        logger.warn("miniapp-story-choice", "Invalid choice on narrative scene", {
+        console.warn("miniapp-story-choice", "Invalid choice on narrative scene", {
           userId,
           theme,
           chapterNumber,
@@ -162,7 +149,7 @@ export async function POST(request: NextRequest) {
 
       if (!selectedChoice) {
         // ERROR: Choice ID non esistente
-        logger.warn("miniapp-story-choice", "Invalid choice ID", {
+        console.warn("miniapp-story-choice", "Invalid choice ID", {
           userId,
           choiceId,
           availableChoices: currentScene.choices?.map((c) => c.id),
@@ -193,7 +180,7 @@ export async function POST(request: NextRequest) {
 
       if (!validation_result.isValid) {
         // ERROR: PP non valido (cheating attempt?)
-        logger.warn("miniapp-story-choice", "Invalid PP delta detected", {
+        console.warn("miniapp-story-choice", "Invalid PP delta detected", {
           userId,
           choiceId,
           ppDelta,
@@ -214,7 +201,7 @@ export async function POST(request: NextRequest) {
       }
 
       // VALID: Choice con PP corretto
-      logger.debug("miniapp-story-choice", "Valid choice with PP", {
+      console.debug("miniapp-story-choice", "Valid choice with PP", {
         userId,
         choiceId,
         ppDelta,
@@ -231,7 +218,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (!updatedSession) {
-      logger.error("miniapp-story-choice", "Failed to update session", { userId })
+      console.error("miniapp-story-choice", "Failed to update session", { userId })
       return NextResponse.json({ error: "Session error" }, { status: 500 })
     }
 
@@ -254,7 +241,7 @@ export async function POST(request: NextRequest) {
       const multiplier = await import("@/lib/story/event-manager").then((m) => m.EventManager.getPPMultiplier(theme))
       const finalPPEarned = Math.floor(totalPP * multiplier)
 
-      logger.info("miniapp-story-choice", "Chapter completed", { userId, theme, ppEarned: finalPPEarned })
+      console.info("miniapp-story-choice", "Chapter completed", { userId, theme, ppEarned: finalPPEarned })
 
       return NextResponse.json({
         success: true,
@@ -274,7 +261,7 @@ export async function POST(request: NextRequest) {
 
     const nextScene = chapter.scenes[nextSceneIndex]
     if (!nextScene) {
-      logger.error("miniapp-story-choice", "Invalid chapter structure - missing next scene", { nextSceneIndex })
+      console.error("miniapp-story-choice", "Invalid chapter structure - missing next scene", { nextSceneIndex })
       return NextResponse.json({ error: "Invalid chapter structure" }, { status: 500 })
     }
 
@@ -299,7 +286,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
     const errorStack = error instanceof Error ? error.stack : undefined
-    logger.error("miniapp-story-choice", "Error processing choice", {
+    console.error("miniapp-story-choice", "Error processing choice", {
       error: errorMessage,
       stack: errorStack,
       userId,
