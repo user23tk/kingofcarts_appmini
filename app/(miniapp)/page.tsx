@@ -17,6 +17,8 @@ interface DashboardData {
     firstName: string
     totalPP: number
     rank: number
+    eventPP?: number
+    eventRank?: number
   }
   stats: {
     chaptersCompleted: number

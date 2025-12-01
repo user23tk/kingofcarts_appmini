@@ -1,129 +1,135 @@
 import { createAdminClient } from "@/lib/supabase/admin"
+import { createLogger } from "@/lib/utils/logger"
+
+const logger = createLogger("EventManager")
+
+/** Rappresenta un evento/contest attivo */
+export interface ActiveEvent {
+  id: string
+  name: string
+  title: string
+  description?: string
+  event_start_date?: string
+  event_end_date?: string
+  pp_multiplier: number
+  is_active: boolean
+  is_event: boolean
+  event_emoji?: string
+  emoji?: string
+}
+
+/** Player nella classifica evento */
+export interface EventPlayer {
+  rank: number
+  user_id: string
+  first_name: string
+  total_pp: number
+  chapters_completed: number
+  last_updated?: string
+}
+
+/** Statistiche utente per un evento */
+export interface UserEventStats {
+  rank: number
+  total_pp: number
+  chapters_completed: number
+}
 
 export class EventManager {
+
   /**
-   * Get the currently active event contest (with expiration check)
-   * Uses the consolidated get_active_event RPC with fallback to direct query
+   * Ottiene l'evento/contest attualmente attivo
+   * Usa RPC get_active_event con fallback a query diretta
    */
-  static async getActiveEvent() {
+  static async getActiveEvent(): Promise<ActiveEvent | null> {
     const supabase = createAdminClient()
 
-    console.log("[EventManager] getActiveEvent called")
-
-    // NOTA: deactivate_expired_events rimossa - la logica di scadenza 
-    // è già gestita nel WHERE della funzione get_active_event()
-
-    // Get the active event using consolidated RPC
+    // Prima prova con RPC
     const { data, error } = await supabase.rpc("get_active_event")
 
-    console.log("[EventManager] RPC get_active_event RAW response:", { 
-      data: JSON.stringify(data), 
-      error: error ? JSON.stringify(error) : null,
-      dataType: typeof data,
-      isArray: Array.isArray(data),
-      dataLength: Array.isArray(data) ? data.length : 'N/A'
-    })
-
-    // Se non c'è errore ma data è vuoto/null, prova query diretta
+    // Fallback a query diretta se RPC ritorna vuoto
     if (!error && (!data || (Array.isArray(data) && data.length === 0))) {
-      console.log("[EventManager] RPC returned empty, trying direct query...")
-      const { data: directData, error: directError } = await supabase
-        .from("themes")
-        .select("name, title, description, event_start_date, event_end_date, pp_multiplier, is_event, is_active")
-        .eq("is_event", true)
-        .eq("is_active", true)
-        .order("event_start_date", { ascending: false })
-        .limit(1)
-      
-      console.log("[EventManager] Direct query result:", {
-        data: JSON.stringify(directData),
-        error: directError ? JSON.stringify(directError) : null
-      })
-      
-      if (directData && directData.length > 0) {
-        const theme = directData[0]
-        const now = new Date()
-        const startOk = !theme.event_start_date || new Date(theme.event_start_date) <= now
-        const endOk = !theme.event_end_date || new Date(theme.event_end_date) > now
-        
-        console.log("[EventManager] Direct query found:", {
-          name: theme.name,
-          startOk,
-          endOk,
-          event_start_date: theme.event_start_date,
-          event_end_date: theme.event_end_date,
-          now: now.toISOString()
-        })
-        
-        if (startOk && endOk) {
-          return {
-            id: theme.name,
-            name: theme.name,
-            title: theme.title,
-            description: theme.description,
-            event_start_date: theme.event_start_date,
-            event_end_date: theme.event_end_date,
-            pp_multiplier: theme.pp_multiplier || 1.0,
-            is_active: true,
-            is_event: true,
-          }
-        }
-      }
+      logger.debug("RPC vuoto, fallback a query diretta")
+      return this.getActiveEventFallback(supabase)
     }
 
     if (error) {
-      console.error("[EventManager] Error getting active event:", error)
+      logger.error("Errore RPC get_active_event", error)
       return null
     }
 
-    if (!data) {
-      console.log("[EventManager] No data returned from RPC")
-      return null
-    }
+    if (!data) return null
 
-    // Handle array response (RPC returns TABLE)
-    if (Array.isArray(data) && data.length > 0) {
-      console.log("[EventManager] Active event found:", data[0].theme_id)
-      return {
-        id: data[0].theme_id,
-        name: data[0].theme_id,
-        title: data[0].theme_name,
-        description: data[0].theme_description,
-        event_start_date: data[0].start_date,
-        event_end_date: data[0].end_date,
-        pp_multiplier: parseFloat(data[0].pp_multiplier) || 1.0,
-        is_active: true,
-        is_event: true,
-      }
-    }
+    // Gestisce risposta array (RPC ritorna TABLE)
+    const event = Array.isArray(data) ? data[0] : data
+    if (!event) return null
 
-    if (Array.isArray(data) && data.length === 0) {
-      console.log("[EventManager] No active event (empty array)")
-      return null
-    }
-
-    // If data is a single object (shouldn't happen with TABLE return type, but handle it)
-    if (!Array.isArray(data) && typeof data === "object") {
-      console.log("[EventManager] Single event object:", data)
-      return {
-        id: data.theme_id,
-        name: data.theme_id,
-        title: data.theme_name,
-        description: data.theme_description,
-        event_start_date: data.start_date,
-        event_end_date: data.end_date,
-        pp_multiplier: parseFloat(data.pp_multiplier) || 1.0,
-        is_active: true,
-        is_event: true,
-      }
-    }
-
-    console.log("[EventManager] Empty or invalid response")
-    return null
+    return this.normalizeEventResponse(event)
   }
 
   /**
-   * Check if a theme is an active event contest
+   * Fallback query diretta quando RPC non funziona
+   */
+  private static async getActiveEventFallback(supabase: ReturnType<typeof createAdminClient>): Promise<ActiveEvent | null> {
+    const { data, error } = await supabase
+      .from("themes")
+      .select("name, title, description, event_start_date, event_end_date, pp_multiplier, is_event, is_active")
+      .eq("is_event", true)
+      .eq("is_active", true)
+      .order("event_start_date", { ascending: false })
+      .limit(1)
+
+    if (error || !data?.length) return null
+
+    const theme = data[0]
+    const now = new Date()
+    const isWithinTimeWindow =
+      (!theme.event_start_date || new Date(theme.event_start_date) <= now) &&
+      (!theme.event_end_date || new Date(theme.event_end_date) > now)
+
+    if (!isWithinTimeWindow) return null
+
+    return {
+      id: theme.name,
+      name: theme.name,
+      title: theme.title,
+      description: theme.description,
+      event_start_date: theme.event_start_date,
+      event_end_date: theme.event_end_date,
+      pp_multiplier: theme.pp_multiplier || 1.0,
+      is_active: true,
+      is_event: true,
+    }
+  }
+
+  /**
+   * Normalizza la risposta RPC che può avere formati diversi
+   */
+  private static normalizeEventResponse(event: Record<string, unknown>): ActiveEvent {
+    // Supporta entrambi i formati: vecchio (name/title) e nuovo (theme_id/theme_name)
+    const themeId = (event.theme_id || event.name) as string
+    const themeName = (event.theme_name || event.title) as string
+    const themeDesc = (event.theme_description || event.description) as string | undefined
+    const startDate = (event.start_date || event.event_start_date) as string | undefined
+    const endDate = (event.end_date || event.event_end_date) as string | undefined
+
+    logger.debug("Evento attivo trovato", themeId)
+
+    return {
+      id: themeId,
+      name: themeId,
+      title: themeName,
+      description: themeDesc,
+      event_start_date: startDate,
+      event_end_date: endDate,
+      pp_multiplier: parseFloat(String(event.pp_multiplier)) || 1.0,
+      is_active: true,
+      is_event: true,
+    }
+  }
+
+  /**
+   * Verifica se un tema è un contest evento attivo
    */
   static async isEventTheme(themeKey: string): Promise<boolean> {
     const supabase = createAdminClient()
@@ -134,58 +140,41 @@ export class EventManager {
       .eq("name", themeKey)
       .single()
 
-    if (error || !data) {
-      console.error("[EventManager] Error checking if theme is event:", error)
-      return false
-    }
-
-    // Must be marked as event and active
-    if (!data.is_event || !data.is_active) {
+    if (error || !data || !data.is_event || !data.is_active) {
       return false
     }
 
     const now = new Date()
+    const hasStarted = !data.event_start_date || new Date(data.event_start_date) <= now
+    const hasNotEnded = !data.event_end_date || new Date(data.event_end_date) > now
 
-    if (data.event_start_date && new Date(data.event_start_date) > now) {
-      console.log(`[EventManager] Event ${themeKey} has not started yet (starts: ${data.event_start_date})`)
-      return false
-    }
-
-    if (data.event_end_date && new Date(data.event_end_date) < now) {
-      console.log(`[EventManager] Event ${themeKey} has expired (ended: ${data.event_end_date})`)
-      return false
-    }
-
-    return true
+    return hasStarted && hasNotEnded
   }
 
   /**
-   * Get event leaderboard for a specific event
+   * Ottiene la classifica dell'evento
    */
-  static async getEventLeaderboard(themeKey: string, limit = 100) {
+  static async getEventLeaderboard(themeKey: string, limit = 100): Promise<EventPlayer[]> {
     const supabase = createAdminClient()
 
-    console.log(`[EventManager] getEventLeaderboard called for theme: ${themeKey}, limit: ${limit}`)
-
-    // Try RPC first
     const { data, error } = await supabase.rpc("get_event_leaderboard_v2", {
       p_theme: themeKey,
       p_limit: limit,
     })
 
     if (error) {
-      console.error("[EventManager] RPC get_event_leaderboard_v2 failed:", error)
+      logger.error("Errore get_event_leaderboard_v2", error)
       return []
     }
 
-    console.log(`[EventManager] RPC returned ${data?.length || 0} players`)
+    logger.debug(`Leaderboard caricata: ${data?.length || 0} giocatori`)
     return data || []
   }
 
   /**
-   * Get user's rank in event leaderboard
+   * Ottiene la posizione dell'utente nella classifica evento
    */
-  static async getUserEventRank(userId: string, themeKey: string) {
+  static async getUserEventRank(userId: string, themeKey: string): Promise<UserEventStats | null> {
     const supabase = createAdminClient()
 
     const { data, error } = await supabase.rpc("get_user_event_stats", {
@@ -194,7 +183,7 @@ export class EventManager {
     })
 
     if (error) {
-      console.error("[EventManager] Error getting user event rank:", error)
+      logger.error("Errore get_user_event_stats", error)
       return null
     }
 
@@ -202,59 +191,38 @@ export class EventManager {
   }
 
   /**
-   * Get PP multiplier for a theme (returns 1.0 if not an active event)
+   * Ottiene il moltiplicatore PP per un tema (1.0 se non è evento attivo)
    */
   static async getPPMultiplier(themeKey: string): Promise<number> {
+    const isEvent = await this.isEventTheme(themeKey)
+    if (!isEvent) return 1.0
+
     const supabase = createAdminClient()
-    const { data: theme } = await supabase
+    const { data } = await supabase
       .from("themes")
-      .select("pp_multiplier, is_event, is_active, event_start_date, event_end_date")
+      .select("pp_multiplier")
       .eq("name", themeKey)
       .single()
 
-    // No theme found or not an event
-    if (!theme || !theme.is_event || !theme.is_active) {
-      return 1.0
-    }
-
-    const now = new Date()
-
-    if (theme.event_start_date && new Date(theme.event_start_date) > now) {
-      return 1.0
-    }
-
-    if (theme.event_end_date && new Date(theme.event_end_date) < now) {
-      return 1.0
-    }
-
-    return theme.pp_multiplier || 1.0
+    return data?.pp_multiplier || 1.0
   }
 
   /**
-   * Update event leaderboard when user completes a chapter in an event
-   * Uses atomic transaction to prevent race conditions
+   * Aggiorna la classifica evento quando un utente completa un capitolo
+   * Usa transazione atomica per prevenire race conditions
    */
   static async updateEventLeaderboard(userId: string, themeKey: string, ppGained: number): Promise<void> {
-    const supabase = createAdminClient()
-
-    console.log(`[EventManager] updateEventLeaderboard called:`, {
-      userId,
-      themeKey,
-      ppGained,
-    })
-
-    // Check if theme is an active event (with time window validation)
+    // Verifica che il tema sia un evento attivo
+    console.log(`[EventManager] Checking if theme '${themeKey}' is active event...`)
     const isEvent = await this.isEventTheme(themeKey)
-    console.log(`[EventManager] isEventTheme result for ${themeKey}:`, isEvent)
+    console.log(`[EventManager] Theme '${themeKey}' is active event: ${isEvent}`)
 
     if (!isEvent) {
-      console.log(`[EventManager] Theme ${themeKey} is not an active event, skipping event leaderboard update`)
+      logger.debug(`Tema ${themeKey} non è evento attivo, skip update`)
       return
     }
 
-    console.log(
-      `[EventManager] Calling update_event_leaderboard_atomic RPC: user=${userId}, theme=${themeKey}, pp=${ppGained}`,
-    )
+    const supabase = createAdminClient()
 
     const { error } = await supabase.rpc("update_event_leaderboard_atomic", {
       p_user_id: userId,
@@ -263,26 +231,10 @@ export class EventManager {
     })
 
     if (error) {
-      console.error("[EventManager] Error updating event leaderboard:", error)
+      logger.error("Errore update_event_leaderboard_atomic", error)
       throw new Error(`Failed to update event leaderboard: ${error.message}`)
     }
 
-    console.log(`[EventManager] RPC call successful for theme ${themeKey}`)
-
-    // Verify the update
-    const { data: verifyData, error: verifyError } = await supabase
-      .from("event_leaderboard")
-      .select("total_pp, chapters_completed")
-      .eq("user_id", userId)
-      .eq("theme", themeKey)
-      .single()
-
-    if (verifyError) {
-      console.error(`[EventManager] Could not verify event leaderboard update:`, verifyError)
-    } else {
-      console.log(
-        `[EventManager] Verified: user ${userId} now has ${verifyData?.total_pp} PP, ${verifyData?.chapters_completed} chapters in event ${themeKey}`,
-      )
-    }
+    logger.debug(`Leaderboard aggiornata: user=${userId}, theme=${themeKey}, pp=${ppGained}`)
   }
 }
