@@ -43,6 +43,7 @@ interface EventLeaderboardEntry {
   user_id: string
   first_name: string
   total_pp: number
+  chapters_completed: number
 }
 
 interface ActiveEvent {
@@ -98,7 +99,17 @@ export default function LeaderboardPage() {
   })
 
   const activeEvent = eventData?.activeEvent || null
-  const eventLeaderboard = eventData?.players || []
+  const eventLeaderboard: EventLeaderboardEntry[] = eventData?.players || []
+
+  useEffect(() => {
+    if (eventData) {
+      console.log("[v0] [LeaderboardPage] Event data received:", {
+        hasActiveEvent: !!eventData.activeEvent,
+        playersCount: eventData.players?.length || 0,
+        debug: eventData._debug,
+      })
+    }
+  }, [eventData])
 
   useEffect(() => {
     // If there's an active event, default to event tab
@@ -166,6 +177,7 @@ export default function LeaderboardPage() {
           </TabsList>
 
           <TabsContent value="general" className="space-y-6">
+            {/* ... existing code for general tab ... */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
               <Card className="bg-[#242F3D] border-[#2C3847]">
                 <CardHeader>
@@ -411,7 +423,9 @@ export default function LeaderboardPage() {
                                       {entry.first_name}
                                       {isCurrentUser && <span className="ml-2 text-xs">(Tu)</span>}
                                     </p>
-                                    <p className="text-xs text-gray-400">Contest PP</p>
+                                    <p className="text-xs text-gray-400">
+                                      {entry.chapters_completed || 0} capitoli completati
+                                    </p>
                                   </div>
                                 </div>
                                 <Badge
@@ -449,23 +463,13 @@ export default function LeaderboardPage() {
                     )}
                   </div>
                   <Button
-                    variant="outline"
-                    size="sm"
-                    className={`${
-                      activeTab === "event"
-                        ? "bg-yellow-500 text-black border-yellow-500 hover:bg-yellow-600"
-                        : "bg-[#2AABEE] text-white border-[#2AABEE] hover:bg-[#229ED9]"
-                    }`}
+                    className="bg-[#2AABEE] hover:bg-[#2AABEE]/80"
                     onClick={() => {
                       hapticFeedback("medium")
-                      if (activeTab === "event" && activeEvent) {
-                        router.push(`/story/${activeEvent.theme_key}`)
-                      } else {
-                        router.push("/themes")
-                      }
+                      router.push("/themes")
                     }}
                   >
-                    {activeTab === "event" ? "Gioca Contest" : "Play More"}
+                    Gioca
                   </Button>
                 </div>
               </CardContent>

@@ -155,17 +155,83 @@ export class EventManager {
    */
   static async getEventLeaderboard(themeKey: string, limit = 100) {
     const supabase = createAdminClient()
+
+    console.log(`[v0] [EventManager] getEventLeaderboard called for theme: ${themeKey}, limit: ${limit}`)
+
+    // Try RPC first
     const { data, error } = await supabase.rpc("get_event_leaderboard_v2", {
       p_theme: themeKey,
       p_limit: limit,
     })
 
     if (error) {
-      console.error("[v0] Error getting event leaderboard:", error)
+      console.error("[v0] [EventManager] RPC get_event_leaderboard_v2 failed:", error)
+      console.log("[v0] [EventManager] Attempting direct query fallback...")
+
+      return await this.getEventLeaderboardDirect(themeKey, limit)
+    }
+
+    console.log(`[v0] [EventManager] RPC returned ${data?.length || 0} players`)
+    return data || []
+  }
+
+  /**
+   * NEW: Direct query fallback for event leaderboard
+   * Uses PP-first ordering: ORDER BY total_pp DESC, chapters_completed DESC
+   */
+  private static async getEventLeaderboardDirect(themeKey: string, limit = 100) {
+    const supabase = createAdminClient()
+
+    console.log(`[v0] [EventManager] Direct query for event leaderboard: ${themeKey}`)
+
+    // Get event leaderboard entries
+    const { data: leaderboardData, error: leaderboardError } = await supabase
+      .from("event_leaderboard")
+      .select("user_id, total_pp, chapters_completed, last_updated")
+      .eq("theme", themeKey)
+      .gt("total_pp", 0)
+      .order("total_pp", { ascending: false })
+      .order("chapters_completed", { ascending: false })
+      .limit(limit)
+
+    if (leaderboardError) {
+      console.error("[v0] [EventManager] Direct query failed:", leaderboardError)
       return []
     }
 
-    return data || []
+    if (!leaderboardData || leaderboardData.length === 0) {
+      console.log("[v0] [EventManager] No entries found in event_leaderboard for theme:", themeKey)
+      return []
+    }
+
+    console.log(`[v0] [EventManager] Found ${leaderboardData.length} entries in event_leaderboard`)
+
+    // Get user info for all user_ids
+    const userIds = leaderboardData.map((entry) => entry.user_id)
+    const { data: usersData, error: usersError } = await supabase
+      .from("users")
+      .select("id, first_name, username")
+      .in("id", userIds)
+
+    if (usersError) {
+      console.error("[v0] [EventManager] Error fetching user data:", usersError)
+    }
+
+    // Create a map for quick lookup
+    const userMap = new Map((usersData || []).map((u) => [u.id, u.first_name || u.username || "Anonymous"]))
+
+    // Build the result with ranks
+    const result = leaderboardData.map((entry, index) => ({
+      rank: index + 1,
+      user_id: entry.user_id,
+      first_name: userMap.get(entry.user_id) || "Anonymous",
+      total_pp: entry.total_pp,
+      chapters_completed: entry.chapters_completed,
+      last_updated: entry.last_updated,
+    }))
+
+    console.log(`[v0] [EventManager] Returning ${result.length} players with ranks`)
+    return result
   }
 
   /**

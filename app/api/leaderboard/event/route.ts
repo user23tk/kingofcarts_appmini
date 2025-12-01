@@ -7,11 +7,6 @@ export const runtime = "nodejs"
 export async function GET() {
   try {
     console.log("[v0] [/api/leaderboard/event] Starting request")
-    console.log(
-      "[v0] [/api/leaderboard/event] SUPABASE_URL:",
-      process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 30) + "...",
-    )
-    console.log("[v0] [/api/leaderboard/event] SERVICE_ROLE_KEY present:", !!process.env.SUPABASE_SERVICE_ROLE_KEY)
 
     // This ensures we use the same code path as the dashboard
     const activeEvent = await EventManager.getActiveEvent()
@@ -20,8 +15,6 @@ export async function GET() {
 
     if (!activeEvent) {
       console.log("[v0] [/api/leaderboard/event] No active event found")
-      console.log("[v0] [/api/leaderboard/event] Check: is get_active_event RPC returning data in DB?")
-      console.log("[v0] [/api/leaderboard/event] Run: SELECT * FROM get_active_event();")
       return NextResponse.json(
         {
           activeEvent: null,
@@ -57,6 +50,10 @@ export async function GET() {
     try {
       players = await EventManager.getEventLeaderboard(themeKey, 100)
       console.log("[v0] [/api/leaderboard/event] Event leaderboard players count:", players.length)
+
+      if (players.length > 0) {
+        console.log("[v0] [/api/leaderboard/event] First player sample:", JSON.stringify(players[0]))
+      }
     } catch (leaderboardError) {
       console.error("[v0] [/api/leaderboard/event] Error fetching event leaderboard:", leaderboardError)
       players = []
@@ -73,14 +70,19 @@ export async function GET() {
           event_end_date: activeEvent.event_end_date,
           description: activeEvent.description,
         },
-        players: players.map((player: any) => ({
-          rank: player.rank,
+        players: players.map((player: any, index: number) => ({
+          rank: player.rank || index + 1,
           user_id: player.user_id,
           first_name: player.first_name || player.username || "Anonymous",
-          total_pp: player.total_pp,
-          chapters_completed: player.chapters_completed,
+          total_pp: player.total_pp || 0,
+          chapters_completed: player.chapters_completed || 0,
           last_updated: player.last_updated,
         })),
+        _debug: {
+          players_count: players.length,
+          theme_key: themeKey,
+          timestamp: new Date().toISOString(),
+        },
       },
       {
         headers: {
