@@ -56,16 +56,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    const { data: progress, error: progressError } = await supabase.from("user_progress").select("*").eq("user_id", userId).single()
-
-    if (progressError) {
-      console.error("[Dashboard] Progress query error:", progressError)
-    }
-
-    const chaptersCompleted = progress?.chapters_completed || 0
-    const themesCompleted = progress?.themes_completed || 0
-    const totalPP = progress?.total_pp || 0
-
+    let totalPP = 0
+    let chaptersCompleted = 0
+    let themesCompleted = 0
     const totalThemes = await QueryCache.get(
       `total_themes`,
       async () => {
@@ -78,21 +71,34 @@ export async function GET(request: NextRequest) {
       300,
     )
 
-    let rank = 0
-    let totalPlayers = 0
     let eventPP = 0
     let eventRank = 0
+    let rank = 0
+    let totalPlayers = 0
 
     try {
-      // Get global rank
-      const rankData = await LeaderboardManager.getUserRank(userId)
-      if (rankData) {
-        rank = rankData.rank
-        totalPlayers = rankData.totalPlayers
+      // Use LeaderboardManager to get consistent stats (PP, Rank, Chapters)
+      const userStats = await LeaderboardManager.getUserStats(userId)
+      if (userStats) {
+        totalPP = userStats.totalPp
+        chaptersCompleted = userStats.chaptersCompleted
+        themesCompleted = userStats.themesCompleted
+        rank = userStats.rank
+        totalPlayers = userStats.totalPlayers
       }
-    } catch (rankErr) {
-      console.error("[Dashboard] Rank calculation failed:", rankErr)
+    } catch (statsErr) {
+      console.error("[Dashboard] Failed to get user stats via LeaderboardManager:", statsErr)
+      // Fallback to direct query if LeaderboardManager fails
+      const { data: progress, error: progressError } = await supabase.from("user_progress").select("*").eq("user_id", userId).single()
+      if (!progressError && progress) {
+        totalPP = progress.total_pp || 0
+        chaptersCompleted = progress.chapters_completed || 0
+        themesCompleted = progress.themes_completed || 0
+      }
     }
+
+    // Fetch progress for active session data (uncached to be fresh)
+    const { data: progress } = await supabase.from("user_progress").select("*").eq("user_id", userId).single()
 
     const activeSession =
       progress?.current_theme && progress?.current_scene !== null
