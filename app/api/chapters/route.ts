@@ -157,6 +157,12 @@ export async function GET(request: NextRequest) {
 
       if (themeData) {
         query = query.eq("theme_id", themeData.id)
+      } else {
+        // If theme is specified but not found, return empty list instead of all chapters
+        return NextResponse.json({
+          success: true,
+          chapters: [],
+        })
       }
     }
 
