@@ -134,7 +134,7 @@ export class EventManager {
     const { data, error } = await supabase
       .from("themes")
       .select("is_event, is_active, event_start_date, event_end_date")
-      .eq("name", themeKey)
+      .ilike("name", themeKey)
       .single()
 
     if (error || !data || !data.is_event || !data.is_active) {
@@ -209,21 +209,43 @@ export class EventManager {
    * Usa transazione atomica per prevenire race conditions
    */
   static async updateEventLeaderboard(userId: string, themeKey: string, ppGained: number): Promise<void> {
-    // Verifica che il tema sia un evento attivo
-    console.log(`[EventManager] Checking if theme '${themeKey}' is active event...`)
-    const isEvent = await this.isEventTheme(themeKey)
-    console.log(`[EventManager] Theme '${themeKey}' is active event: ${isEvent}`)
+    const supabase = createAdminClient()
 
-    if (!isEvent) {
-      console.log(`Tema ${themeKey} non è evento attivo, skip update`)
+    // 1. Fetch canonical theme name and verify it's an active event
+    console.log(`[EventManager] Checking if theme '${themeKey}' is active event...`)
+
+    const { data: themeData, error: themeError } = await supabase
+      .from("themes")
+      .select("name, is_event, is_active, event_start_date, event_end_date")
+      .ilike("name", themeKey)
+      .single()
+
+    if (themeError || !themeData) {
+      console.log(`[EventManager] Theme '${themeKey}' not found or error:`, themeError)
       return
     }
 
-    const supabase = createAdminClient()
+    const now = new Date()
+    const hasStarted = !themeData.event_start_date || new Date(themeData.event_start_date) <= now
+    const hasNotEnded = !themeData.event_end_date || new Date(themeData.event_end_date) > now
+    const isEvent = themeData.is_event && themeData.is_active && hasStarted && hasNotEnded
+
+    console.log(`[EventManager] Theme '${themeData.name}' (input: ${themeKey}) is active event: ${isEvent}`)
+
+    if (!isEvent) {
+      console.log(`Tema ${themeData.name} non è evento attivo, skip update`)
+      return
+    }
+
+    // 2. Use the CANONICAL name from the database
+    // This ensures that if the DB has "natale" and we pass "Natale", we use "natale"
+    const canonicalThemeName = themeData.name
+
+    console.log(`[EventManager] Updating leaderboard for canonical theme: '${canonicalThemeName}' (input was '${themeKey}')`)
 
     const { error } = await supabase.rpc("update_event_leaderboard_atomic", {
       p_user_id: userId,
-      p_theme: themeKey,
+      p_theme: canonicalThemeName,
       p_pp_gained: ppGained,
     })
 
@@ -232,6 +254,6 @@ export class EventManager {
       throw new Error(`Failed to update event leaderboard: ${error.message}`)
     }
 
-    console.log(`Leaderboard aggiornata: user=${userId}, theme=${themeKey}, pp=${ppGained}`)
+    console.log(`Leaderboard aggiornata: user=${userId}, theme=${canonicalThemeName}, pp=${ppGained}`)
   }
 }

@@ -56,19 +56,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    const progress = await QueryCache.get(
-      `user_progress:${userId}`,
-      async () => {
-        const { data, error } = await supabase.from("user_progress").select("*").eq("user_id", userId).single()
+    const { data: progress, error: progressError } = await supabase.from("user_progress").select("*").eq("user_id", userId).single()
 
-        if (error) {
-          console.error("[Dashboard] Progress query error:", error)
-          return null
-        }
-        return data
-      },
-      30,
-    )
+    if (progressError) {
+      console.error("[Dashboard] Progress query error:", progressError)
+    }
 
     const chaptersCompleted = progress?.chapters_completed || 0
     const themesCompleted = progress?.themes_completed || 0
@@ -88,8 +80,11 @@ export async function GET(request: NextRequest) {
 
     let rank = 0
     let totalPlayers = 0
+    let eventPP = 0
+    let eventRank = 0
 
     try {
+      // Get global rank
       const rankData = await LeaderboardManager.getUserRank(userId)
       if (rankData) {
         rank = rankData.rank
@@ -97,7 +92,6 @@ export async function GET(request: NextRequest) {
       }
     } catch (rankErr) {
       console.error("[Dashboard] Rank calculation failed:", rankErr)
-      // rank remains 0 - correct for errors
     }
 
     const activeSession =
@@ -118,6 +112,7 @@ export async function GET(request: NextRequest) {
       multiplier: number
       endsAt?: string
     }> = []
+
     try {
       const activeEvent = await EventManager.getActiveEvent()
       if (activeEvent) {
@@ -126,6 +121,19 @@ export async function GET(request: NextRequest) {
           name: activeEvent.name,
           endDate: activeEvent.event_end_date
         })
+
+        // Get user's event stats
+        try {
+          const eventStats = await EventManager.getUserEventRank(userId, activeEvent.name)
+          if (eventStats) {
+            eventPP = eventStats.total_pp
+            eventRank = eventStats.rank
+            console.log("[Dashboard] User event stats:", eventStats)
+          }
+        } catch (statsErr) {
+          console.error("[Dashboard] Failed to get user event stats:", statsErr)
+        }
+
         const isNatale = activeEvent.name.toLowerCase().includes("natale")
 
         activeEvents = [
@@ -151,6 +159,8 @@ export async function GET(request: NextRequest) {
         firstName: user.first_name || "Traveler",
         totalPP,
         rank,
+        eventPP, // Add event PP
+        eventRank, // Add event Rank
       },
       stats: {
         chaptersCompleted,
