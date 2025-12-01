@@ -1,7 +1,4 @@
 import { createAdminClient } from "@/lib/supabase/admin"
-import { createLogger } from "@/lib/utils/logger"
-
-const logger = createLogger("EventManager")
 
 /** Rappresenta un evento/contest attivo */
 export interface ActiveEvent {
@@ -49,12 +46,12 @@ export class EventManager {
 
     // Fallback a query diretta se RPC ritorna vuoto
     if (!error && (!data || (Array.isArray(data) && data.length === 0))) {
-      logger.debug("RPC vuoto, fallback a query diretta")
+      console.log("RPC vuoto, fallback a query diretta")
       return this.getActiveEventFallback(supabase)
     }
 
     if (error) {
-      logger.error("Errore RPC get_active_event", error)
+      console.error("Errore RPC get_active_event", error)
       return null
     }
 
@@ -113,7 +110,7 @@ export class EventManager {
     const startDate = (event.start_date || event.event_start_date) as string | undefined
     const endDate = (event.end_date || event.event_end_date) as string | undefined
 
-    logger.debug("Evento attivo trovato", themeId)
+    console.log("Evento attivo trovato", themeId)
 
     return {
       id: themeId,
@@ -163,11 +160,11 @@ export class EventManager {
     })
 
     if (error) {
-      logger.error("Errore get_event_leaderboard_v2", error)
+      console.error("Errore get_event_leaderboard_v2", error)
       return []
     }
 
-    logger.debug(`Leaderboard caricata: ${data?.length || 0} giocatori`)
+    console.log(`Leaderboard caricata: ${data?.length || 0} giocatori`)
     return data || []
   }
 
@@ -183,7 +180,7 @@ export class EventManager {
     })
 
     if (error) {
-      logger.error("Errore get_user_event_stats", error)
+      console.error("Errore get_user_event_stats", error)
       return null
     }
 
@@ -218,7 +215,7 @@ export class EventManager {
     console.log(`[EventManager] Theme '${themeKey}' is active event: ${isEvent}`)
 
     if (!isEvent) {
-      logger.debug(`Tema ${themeKey} non è evento attivo, skip update`)
+      console.log(`Tema ${themeKey} non è evento attivo, skip update`)
       return
     }
 
@@ -231,10 +228,10 @@ export class EventManager {
     })
 
     if (error) {
-      logger.error("Errore update_event_leaderboard_atomic", error)
+      console.error("Errore update_event_leaderboard_atomic", error)
       throw new Error(`Failed to update event leaderboard: ${error.message}`)
     }
 
-    logger.debug(`Leaderboard aggiornata: user=${userId}, theme=${themeKey}, pp=${ppGained}`)
+    console.log(`Leaderboard aggiornata: user=${userId}, theme=${themeKey}, pp=${ppGained}`)
   }
 }
