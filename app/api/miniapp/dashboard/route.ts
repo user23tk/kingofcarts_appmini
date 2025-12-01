@@ -103,20 +103,36 @@ export async function GET(request: NextRequest) {
     const activeSession =
       progress?.current_theme && progress?.current_scene !== null
         ? {
-            theme: progress.current_theme,
-            chapter: progress.current_chapter || 1,
-            scene: progress.current_scene,
-          }
+          theme: progress.current_theme,
+          chapter: progress.current_chapter || 1,
+          scene: progress.current_scene,
+        }
         : null
 
-    let activeEvents = []
+    let activeEvents: Array<{
+      id: string
+      theme: string
+      title: string
+      description?: string
+      emoji: string
+      multiplier: number
+      endsAt?: string
+    }> = []
     try {
       const activeEvent = await EventManager.getActiveEvent()
       if (activeEvent) {
+        console.log("[Dashboard] Active event found:", {
+          id: activeEvent.id,
+          name: activeEvent.name,
+          endDate: activeEvent.event_end_date
+        })
         activeEvents = [
           {
             id: activeEvent.id,
             theme: activeEvent.name, // name è il theme_key corretto (es. "natale")
+            title: activeEvent.title || activeEvent.name,
+            description: activeEvent.description,
+            emoji: activeEvent.event_emoji || activeEvent.emoji || "🎮",
             multiplier: activeEvent.pp_multiplier || 1.0,
             endsAt: activeEvent.event_end_date,
           },

@@ -156,21 +156,10 @@ export default function MiniAppHome() {
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="mb-6">
             <Card
               className="cursor-pointer transition-all hover:shadow-xl active:scale-[0.98] bg-gradient-to-br from-yellow-500/20 via-orange-500/20 to-red-500/20 border-2 border-yellow-500/50"
-              onClick={async () => {
+              onClick={() => {
                 hapticFeedback("medium")
                 const event = dashboardData.activeEvents[0]
-                try {
-                  const response = await fetch(`/api/chapters?theme=${encodeURIComponent(event.theme)}`)
-                  const data = await response.json()
-
-                  if (data.success && data.chapters && data.chapters.length > 0) {
-                    router.push(`/story/${event.theme}`)
-                  } else {
-                    alert("🎄 Contest in preparazione! I capitoli verranno pubblicati a breve. Torna presto!")
-                  }
-                } catch (error) {
-                  alert("🎄 Contest in preparazione! I capitoli verranno pubblicati a breve. Torna presto!")
-                }
+                router.push(`/story/${event.theme}`)
               }}
             >
               <CardHeader className="pb-3">
