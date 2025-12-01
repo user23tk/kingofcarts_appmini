@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
         activeEvents = [
           {
             id: activeEvent.id,
-            theme: activeEvent.theme || activeEvent.name || activeEvent.theme_key,
+            theme: activeEvent.name, // name è il theme_key corretto (es. "natale")
             multiplier: activeEvent.pp_multiplier || 1.0,
             endsAt: activeEvent.event_end_date,
           },
