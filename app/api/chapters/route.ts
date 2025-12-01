@@ -13,6 +13,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Theme, chapter number, and content are required" }, { status: 400 })
     }
 
+    // Security: Validate content size (max 100KB per chapter)
+    const contentStr = JSON.stringify(content)
+    if (contentStr.length > 100000) {
+      return NextResponse.json(
+        { error: "Chapter content too large. Maximum size is 100KB." },
+        { status: 400 }
+      )
+    }
+
     // Validate chapter structure with Zod
     try {
       validateChapterStructure(content)

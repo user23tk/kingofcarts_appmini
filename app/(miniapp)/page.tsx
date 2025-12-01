@@ -178,7 +178,7 @@ export default function MiniAppHome() {
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
                         <Clock className="w-4 h-4" />
-                        <span>Termina il {new Date(event.endsAt).toLocaleDateString()}</span>
+                        <span>Termina il {event.endsAt ? new Date(event.endsAt).toLocaleDateString("it-IT") : "N/A"}</span>
                       </div>
                       <Button
                         className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-bold"

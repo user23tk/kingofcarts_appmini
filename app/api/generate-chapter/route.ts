@@ -7,12 +7,18 @@ export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
   try {
-    const { theme, chapterNumber, existingChapters, userId } = await request.json() // Extract userId from body
+    const { theme, chapterNumber, existingChapters, userId } = await request.json()
 
-    // Limit to 5 generations per minute per user to control AI costs
-    // Fallback to IP if userId is not provided (though it should be for authenticated users)
-    const identifier = userId || request.headers.get("x-forwarded-for") || "anonymous"
-    const rateLimit = await RateLimit.check(`generate_chapter:${identifier}`, { interval: 60, limit: 5 })
+    // Security: Require userId from Telegram auth
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: "Authentication required" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      )
+    }
+
+    // Security: Stricter rate limiting per user - 3 generations per 2 minutes
+    const rateLimit = await RateLimit.check(`generate_chapter:${userId}`, { interval: 120, limit: 3 })
 
     if (!rateLimit.success) {
       return new Response(

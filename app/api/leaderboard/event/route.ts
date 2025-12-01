@@ -1,117 +1,83 @@
 import { NextResponse } from "next/server"
-import { EventManager } from "@/lib/story/event-manager"
+import { EventManager, type ActiveEvent, type EventPlayer } from "@/lib/story/event-manager"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
 
+const NO_CACHE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+  Pragma: "no-cache",
+  Expires: "0",
+}
+
+interface EventResponse {
+  activeEvent: {
+    id: string
+    theme_key: string
+    event_name: string
+    event_emoji: string
+    pp_multiplier: number
+    event_end_date?: string
+    description?: string
+  } | null
+  players: Array<{
+    rank: number
+    user_id: string
+    first_name: string
+    total_pp: number
+    chapters_completed: number
+    last_updated?: string
+  }>
+}
+
+function formatEventResponse(event: ActiveEvent, players: EventPlayer[]): EventResponse {
+  return {
+    activeEvent: {
+      id: event.id,
+      theme_key: event.name,
+      event_name: event.title || event.name,
+      event_emoji: event.event_emoji || event.emoji || "🎮",
+      pp_multiplier: event.pp_multiplier,
+      event_end_date: event.event_end_date,
+      description: event.description,
+    },
+    players: players.map((player, index) => ({
+      rank: player.rank || index + 1,
+      user_id: player.user_id,
+      first_name: player.first_name || "Anonymous",
+      total_pp: player.total_pp || 0,
+      chapters_completed: player.chapters_completed || 0,
+      last_updated: player.last_updated,
+    })),
+  }
+}
+
 export async function GET() {
   try {
-    console.log("[v0] [/api/leaderboard/event] Starting request")
-
-    // This ensures we use the same code path as the dashboard
     const activeEvent = await EventManager.getActiveEvent()
 
-    console.log("[v0] [/api/leaderboard/event] activeEvent result:", activeEvent ? "found" : "null")
-
     if (!activeEvent) {
-      console.log("[v0] [/api/leaderboard/event] No active event found")
       return NextResponse.json(
-        {
-          activeEvent: null,
-          players: [],
-          _debug: {
-            rpc_called: true,
-            fallback_tried: true,
-            timestamp: new Date().toISOString(),
-          },
-        },
-        {
-          headers: {
-            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-            Pragma: "no-cache",
-            Expires: "0",
-          },
-        },
+        { activeEvent: null, players: [] },
+        { headers: NO_CACHE_HEADERS },
       )
     }
 
-    console.log("[v0] [/api/leaderboard/event] Active event found:", {
-      id: activeEvent.id,
-      name: activeEvent.name,
-      title: activeEvent.title,
-      is_active: activeEvent.is_active,
-      event_start_date: activeEvent.event_start_date,
-      event_end_date: activeEvent.event_end_date,
-    })
-
-    const themeKey = activeEvent.name
-
-    let players: any[] = []
-    try {
-      players = await EventManager.getEventLeaderboard(themeKey, 100)
-      console.log("[v0] [/api/leaderboard/event] Event leaderboard players count:", players.length)
-
-      if (players.length > 0) {
-        console.log("[v0] [/api/leaderboard/event] First player sample:", JSON.stringify(players[0]))
-      }
-    } catch (leaderboardError) {
-      console.error("[v0] [/api/leaderboard/event] Error fetching event leaderboard:", leaderboardError)
-      players = []
-    }
+    const players = await EventManager.getEventLeaderboard(activeEvent.name, 100)
 
     return NextResponse.json(
-      {
-        activeEvent: {
-          id: activeEvent.id,
-          theme_key: themeKey,
-          event_name: activeEvent.title || activeEvent.name || themeKey,
-          event_emoji: activeEvent.event_emoji || activeEvent.emoji || "🎮",
-          pp_multiplier: activeEvent.pp_multiplier || 1.0,
-          event_end_date: activeEvent.event_end_date,
-          description: activeEvent.description,
-        },
-        players: players.map((player: any, index: number) => ({
-          rank: player.rank || index + 1,
-          user_id: player.user_id,
-          first_name: player.first_name || player.username || "Anonymous",
-          total_pp: player.total_pp || 0,
-          chapters_completed: player.chapters_completed || 0,
-          last_updated: player.last_updated,
-        })),
-        _debug: {
-          players_count: players.length,
-          theme_key: themeKey,
-          timestamp: new Date().toISOString(),
-        },
-      },
-      {
-        headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-          Pragma: "no-cache",
-          Expires: "0",
-        },
-      },
+      formatEventResponse(activeEvent, players),
+      { headers: NO_CACHE_HEADERS },
     )
   } catch (error) {
-    console.error("[v0] [/api/leaderboard/event] Error:", error)
+    console.error("[/api/leaderboard/event] Error:", error)
     return NextResponse.json(
-      {
-        activeEvent: null,
-        players: [],
-        error: "Failed to fetch event data",
-        _debug: {
-          error_message: error instanceof Error ? error.message : "Unknown error",
-          timestamp: new Date().toISOString(),
-        },
+      { 
+        activeEvent: null, 
+        players: [], 
+        error: "Failed to fetch event data" 
       },
-      {
-        status: 200,
-        headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-          Pragma: "no-cache",
-          Expires: "0",
-        },
-      },
+      { status: 500, headers: NO_CACHE_HEADERS },
     )
   }
 }

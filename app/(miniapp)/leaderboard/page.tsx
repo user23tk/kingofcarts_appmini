@@ -82,11 +82,16 @@ export default function LeaderboardPage() {
     router.push("/")
   })
 
+  // Fetch leaderboard anche senza user (per browser debug) - su Telegram userà l'userId per evidenziare posizione
+  const leaderboardUrl = user?.id 
+    ? `/api/miniapp/leaderboard?userId=${user.id}&limit=100` 
+    : `/api/miniapp/leaderboard?limit=100`
+  
   const {
     data: leaderboardData,
     error: leaderboardError,
     isLoading: leaderboardLoading,
-  } = useSWR(user?.id ? `/api/miniapp/leaderboard?userId=${user.id}&limit=100` : null, fetcher, {
+  } = useSWR(leaderboardUrl, fetcher, {
     revalidateOnFocus: true,
     revalidateOnReconnect: true,
     dedupingInterval: 30000, // 30 seconds
@@ -128,7 +133,8 @@ export default function LeaderboardPage() {
     }
   }, [activeEvent])
 
-  const loading = isLoading || leaderboardLoading || eventLoading
+  // Non bloccare su isLoading dell'auth - la leaderboard può essere mostrata anche senza autenticazione
+  const loading = leaderboardLoading || eventLoading
   const error = leaderboardError || eventError
 
   const getRankIcon = (rank: number) => {
@@ -183,13 +189,13 @@ export default function LeaderboardPage() {
           </TabsList>
 
           <TabsContent value="general" className="space-y-6">
-            {/* ... existing code for general tab ... */}
+            {/* Stats card */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
               <Card className="bg-[#242F3D] border-[#2C3847]">
                 <CardHeader>
                   <CardTitle className="text-white flex items-center gap-2">
                     <Trophy className="w-5 h-5 text-[#FFD700]" />
-                    Global Stats
+                    Statistiche Globali
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid grid-cols-2 gap-4">
@@ -199,7 +205,7 @@ export default function LeaderboardPage() {
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-white">{leaderboardData?.stats.totalPlayers || 0}</p>
-                      <p className="text-xs text-gray-400">Total Players</p>
+                      <p className="text-xs text-gray-400">Giocatori Totali</p>
                     </div>
                   </div>
 
@@ -209,7 +215,7 @@ export default function LeaderboardPage() {
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-white">{leaderboardData?.stats.topScore || 0}</p>
-                      <p className="text-xs text-gray-400">Top Score</p>
+                      <p className="text-xs text-gray-400">Punteggio Record</p>
                     </div>
                   </div>
 
@@ -219,11 +225,9 @@ export default function LeaderboardPage() {
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-white">
-                        {leaderboardData?.stats.averageChapters
-                          ? leaderboardData.stats.averageChapters.toFixed(1)
-                          : "0.0"}
+                        {leaderboardData?.stats.averageChapters?.toFixed(1) || "0"}
                       </p>
-                      <p className="text-xs text-gray-400">Avg Chapters</p>
+                      <p className="text-xs text-gray-400">Media Capitoli</p>
                     </div>
                   </div>
 
@@ -233,11 +237,9 @@ export default function LeaderboardPage() {
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-white">
-                        {leaderboardData?.stats.completionRate
-                          ? `${(leaderboardData.stats.completionRate * 100).toFixed(1)}%`
-                          : "0%"}
+                        {leaderboardData?.rankings?.reduce((sum, p) => sum + (p.chaptersCompleted || 0), 0) || 0}
                       </p>
-                      <p className="text-xs text-gray-400">Completion Rate</p>
+                      <p className="text-xs text-gray-400">Capitoli Totali</p>
                     </div>
                   </div>
                 </CardContent>
@@ -333,7 +335,7 @@ export default function LeaderboardPage() {
                                 {entry.isCurrentUser && <span className="ml-2 text-xs">(You)</span>}
                               </p>
                               <p className="text-xs text-gray-400">
-                                {entry.chaptersCompleted} chapters • {entry.themesCompleted} themes
+                                📚 {entry.chaptersCompleted} capitoli • 🎭 {entry.themesCompleted} temi
                               </p>
                             </div>
                           </div>
