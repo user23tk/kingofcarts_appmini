@@ -232,8 +232,8 @@ export function LeaderboardDisplay() {
                     <div
                       key={player.userId}
                       className={`flex items-center space-x-4 p-4 rounded-lg border transition-all duration-200 ${player.rank <= 3
-                          ? "bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-yellow-500/30 shadow-lg"
-                          : "bg-white/5 border-white/10 hover:bg-white/10"
+                        ? "bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-yellow-500/30 shadow-lg"
+                        : "bg-white/5 border-white/10 hover:bg-white/10"
                         }`}
                     >
                       <div className="flex-shrink-0">{getRankIcon(player.rank)}</div>
@@ -345,8 +345,8 @@ export function LeaderboardDisplay() {
                     <div
                       key={player.user_id}
                       className={`flex items-center space-x-4 p-4 rounded-lg border transition-all duration-200 ${player.rank <= 3
-                          ? "bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-yellow-500/30 shadow-lg"
-                          : "bg-white/5 border-white/10 hover:bg-white/10"
+                        ? "bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-yellow-500/30 shadow-lg"
+                        : "bg-white/5 border-white/10 hover:bg-white/10"
                         }`}
                     >
                       <div className="flex-shrink-0">{getRankIcon(player.rank)}</div>
