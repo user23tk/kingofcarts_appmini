@@ -1,9 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { StoryManager } from "@/lib/story/story-manager"
 import { SessionManager } from "@/lib/story/session-manager"
-import { AdvancedRateLimiter } from "@/lib/security/rate-limiter"
 import { MiniAppSecurity } from "@/lib/security/miniapp-security"
 import { requireTelegramAuth } from "@/lib/miniapp/auth-middleware"
+import { EventManager } from "@/lib/story/event-manager"
 
 export const dynamic = "force-dynamic"
 
@@ -43,19 +43,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: securityCheck.error }, { status: securityCheck.status })
     }
 
-    // const rateLimitResult = await AdvancedRateLimiter.checkRateLimit(userId, undefined, false)
-    // if (!rateLimitResult.allowed) {
-    //   console.warn("miniapp-story-start", "Rate limit exceeded", { userId })
-    //   return NextResponse.json(
-    //     {
-    //       error: "Rate limit exceeded",
-    //       reason: rateLimitResult.reason,
-    //       resetTime: rateLimitResult.resetTime,
-    //     },
-    //     { status: 429 },
-    //   )
-    // }
-
     const storyManager = new StoryManager()
     const sessionManager = new SessionManager()
 
@@ -63,15 +50,16 @@ export async function POST(request: NextRequest) {
     if (!isValid) {
       console.error("miniapp-story-start", "Invalid theme", { theme })
 
-      // Check if it's an event theme without chapters yet
-      const { EventManager } = await import("@/lib/story/event-manager")
       const isEventTheme = await EventManager.isEventTheme(theme)
 
       if (isEventTheme) {
-        return NextResponse.json({
-          error: "Event in preparazione! I capitoli per questo contest verranno pubblicati a breve. Torna presto! 🎄",
-          code: "EVENT_NOT_READY"
-        }, { status: 400 })
+        return NextResponse.json(
+          {
+            error: "Event in preparazione! I capitoli per questo contest verranno pubblicati a breve. Torna presto! 🎄",
+            code: "EVENT_NOT_READY",
+          },
+          { status: 400 },
+        )
       }
 
       return NextResponse.json({ error: "Invalid theme" }, { status: 400 })
@@ -87,7 +75,6 @@ export async function POST(request: NextRequest) {
 
     const themeProgress = await storyManager.getThemeProgress(userId, theme)
     const chapterNumber = themeProgress.current_chapter
-
     const availableChapters = await storyManager.getAvailableChaptersCount(theme)
 
     console.debug("miniapp-story-start", "Chapter check", {
@@ -96,13 +83,41 @@ export async function POST(request: NextRequest) {
       themeCompleted: themeProgress.completed,
     })
 
-    if (chapterNumber > availableChapters) {
-      console.info("miniapp-story-start", "User completed all available chapters", { userId, theme })
+    // Blocco anticipato per tema completato - PRIMA di caricare il capitolo
+    if (themeProgress.completed === true) {
+      console.info("miniapp-story-start", "Theme already completed, blocking access", {
+        userId,
+        theme,
+        chapterNumber,
+        availableChapters,
+      })
       return NextResponse.json(
         {
           success: false,
           waiting: true,
           message: `Hai completato tutti i ${availableChapters} capitoli disponibili per questo tema! 🎉\n\nNuovi capitoli verranno aggiunti presto. Torna a controllare più tardi!`,
+          completedChapters: availableChapters,
+          theme,
+        },
+        { status: 200 },
+      )
+    }
+
+    if (chapterNumber > availableChapters) {
+      console.info("miniapp-story-start", "Chapter beyond available", {
+        userId,
+        theme,
+        chapterNumber,
+        availableChapters,
+      })
+      return NextResponse.json(
+        {
+          success: false,
+          waiting: true,
+          message:
+            availableChapters === 0
+              ? `I capitoli per questo tema sono in arrivo! 🎄\n\nTorna presto a controllare!`
+              : `Hai completato tutti i ${availableChapters} capitoli disponibili per questo tema! 🎉\n\nNuovi capitoli verranno aggiunti presto. Torna a controllare più tardi!`,
           completedChapters: availableChapters,
           theme,
         },
@@ -138,8 +153,6 @@ export async function POST(request: NextRequest) {
       console.error("miniapp-story-start", "Invalid first scene structure", { theme, chapterNumber })
       return NextResponse.json({ error: "Invalid scene structure in database" }, { status: 500 })
     }
-
-    // await AdvancedRateLimiter.checkRateLimit(userId, undefined, true)
 
     const response = {
       success: true,

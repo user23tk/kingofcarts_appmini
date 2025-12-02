@@ -3,7 +3,6 @@ import { StoryManager } from "@/lib/story/story-manager"
 import { SessionManager } from "@/lib/story/session-manager"
 import { PPValidator } from "@/lib/security/pp-validator"
 import { requireTelegramAuth } from "@/lib/miniapp/auth-middleware"
-import { AdvancedRateLimiter } from "@/lib/security/rate-limiter"
 import { QueryCache } from "@/lib/cache/query-cache"
 
 export const dynamic = "force-dynamic"
@@ -27,11 +26,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
-    // Rate limit check disabled
-    // const rateLimitCheck = await AdvancedRateLimiter.checkRateLimit(userId, undefined, true)
-
     const storyManager = new StoryManager()
     const sessionManager = new SessionManager()
+
+    const themeProgress = await storyManager.getThemeProgress(userId, theme)
+    const availableChapters = await storyManager.getAvailableChaptersCount(theme)
+
+    if (themeProgress.completed || themeProgress.current_chapter > availableChapters) {
+      console.warn("miniapp-story-choice", "Attempted to play completed theme", {
+        userId,
+        theme,
+        themeCompleted: themeProgress.completed,
+        currentChapter: themeProgress.current_chapter,
+        availableChapters,
+      })
+      return NextResponse.json(
+        {
+          error: "Hai già completato tutti i capitoli disponibili per questo tema!",
+          code: "THEME_COMPLETED",
+          waiting: true,
+        },
+        { status: 400 },
+      )
+    }
+
+    if (chapterNumber !== themeProgress.current_chapter) {
+      console.warn("miniapp-story-choice", "Chapter mismatch", {
+        userId,
+        requestedChapter: chapterNumber,
+        currentChapter: themeProgress.current_chapter,
+      })
+      return NextResponse.json(
+        {
+          error: "Capitolo non valido. Ricarica la pagina.",
+          code: "CHAPTER_MISMATCH",
+        },
+        { status: 400 },
+      )
+    }
 
     console.debug("miniapp-story-choice", "Processing choice", { userId, theme, chapterNumber, sceneIndex, choiceId })
 

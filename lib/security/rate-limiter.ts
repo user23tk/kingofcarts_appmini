@@ -30,6 +30,8 @@ export class AdvancedRateLimiter {
         .from("rate_limits")
         .select("*")
         .eq("user_id", userId)
+        .order("id", { ascending: false })
+        .limit(1)
         .maybeSingle()
 
       if (error) {
@@ -59,6 +61,55 @@ export class AdvancedRateLimiter {
         return { allowed: true, currentTime: amsterdamTime }
       }
 
+      const hasNewColumns = "daily_count" in rateLimit && rateLimit.daily_count !== null
+
+      if (!hasNewColumns) {
+        // Legacy record with only date/request_count - use simple daily limit
+        const recordDate = new Date(rateLimit.date)
+        const todayStart = this.getStartOfDay(amsterdamTime)
+
+        if (recordDate < todayStart) {
+          // Old record, create new one for today
+          if (shouldCount) {
+            const { error: insertError } = await supabase.from("rate_limits").insert({
+              user_id: userId,
+              date: todayStart.toISOString().split("T")[0],
+              request_count: 1,
+              daily_count: 1,
+              hourly_count: 1,
+              burst_count: 1,
+              last_daily_reset: todayStart.toISOString(),
+              last_hourly_reset: now.toISOString(),
+              last_burst_reset: now.toISOString(),
+            })
+            if (insertError) {
+              console.error("[RateLimiter] Insert error:", insertError)
+            }
+          }
+          return { allowed: true, currentTime: amsterdamTime }
+        }
+
+        // Same day, check request_count
+        const requestCount = rateLimit.request_count || 0
+        if (requestCount >= this.DEFAULT_DAILY_LIMIT) {
+          return {
+            allowed: false,
+            reason: `Limite giornaliero raggiunto (${this.DEFAULT_DAILY_LIMIT}/giorno). Riprova domani!`,
+            resetTime: this.getTomorrowMidnight(),
+            currentTime: amsterdamTime,
+          }
+        }
+
+        if (shouldCount) {
+          await supabase
+            .from("rate_limits")
+            .update({ request_count: requestCount + 1 })
+            .eq("id", rateLimit.id)
+        }
+        return { allowed: true, currentTime: amsterdamTime }
+      }
+
+      // New schema with daily/hourly/burst counters
       let dailyCount = rateLimit.daily_count || 0
       let hourlyCount = rateLimit.hourly_count || 0
       let burstCount = rateLimit.burst_count || 0
@@ -151,7 +202,7 @@ export class AdvancedRateLimiter {
           updateData.last_burst_reset = now.toISOString()
         }
 
-        const { error: updateError } = await supabase.from("rate_limits").update(updateData).eq("user_id", userId)
+        const { error: updateError } = await supabase.from("rate_limits").update(updateData).eq("id", rateLimit.id)
 
         if (updateError) {
           console.error("[RateLimiter] Update error:", updateError)
