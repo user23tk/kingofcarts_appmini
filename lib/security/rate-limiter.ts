@@ -36,13 +36,12 @@ export class AdvancedRateLimiter {
 
       if (error) {
         console.error("[RateLimiter] Rate limit check error:", error)
-        return { allowed: true, currentTime: amsterdamTime } // Fail open
+        return { allowed: true, currentTime: amsterdamTime }
       }
 
       const nowTimestamp = now.getTime()
 
       if (!rateLimit) {
-        // No record exists, create one
         if (shouldCount) {
           const { error: insertError } = await supabase.from("rate_limits").insert({
             user_id: userId,
@@ -64,12 +63,10 @@ export class AdvancedRateLimiter {
       const hasNewColumns = "daily_count" in rateLimit && rateLimit.daily_count !== null
 
       if (!hasNewColumns) {
-        // Legacy record with only date/request_count - use simple daily limit
         const recordDate = new Date(rateLimit.date)
         const todayStart = this.getStartOfDay(amsterdamTime)
 
         if (recordDate < todayStart) {
-          // Old record, create new one for today
           if (shouldCount) {
             const { error: insertError } = await supabase.from("rate_limits").insert({
               user_id: userId,
@@ -89,7 +86,6 @@ export class AdvancedRateLimiter {
           return { allowed: true, currentTime: amsterdamTime }
         }
 
-        // Same day, check request_count
         const requestCount = rateLimit.request_count || 0
         if (requestCount >= this.DEFAULT_DAILY_LIMIT) {
           return {
@@ -118,35 +114,43 @@ export class AdvancedRateLimiter {
       const lastHourlyReset = new Date(rateLimit.last_hourly_reset || now)
       const lastBurstReset = new Date(rateLimit.last_burst_reset || now)
 
-      // Reset daily counter if day changed
+      let shouldResetDaily = false
+      let shouldResetHourly = false
+      let shouldResetBurst = false
+
       const startOfToday = this.getStartOfDay(amsterdamTime)
+      const hourInMs = 60 * 60 * 1000
+      const burstWindowMs = this.DEFAULT_BURST_WINDOW * 1000
+
+      // Check if resets are needed
       if (lastDailyReset < startOfToday) {
         dailyCount = 0
+        shouldResetDaily = true
       }
 
-      // Reset hourly counter if more than 1 hour passed
-      const hourInMs = 60 * 60 * 1000
       if (nowTimestamp - lastHourlyReset.getTime() >= hourInMs) {
         hourlyCount = 0
+        shouldResetHourly = true
       }
 
-      // Reset burst counter if burst window passed
-      const burstWindowMs = this.DEFAULT_BURST_WINDOW * 1000
       if (nowTimestamp - lastBurstReset.getTime() >= burstWindowMs) {
         burstCount = 0
+        shouldResetBurst = true
       }
 
       // 1. Check burst limit first (most restrictive short-term)
       if (burstCount >= this.DEFAULT_BURST_MAX) {
         const resetTime = new Date(lastBurstReset.getTime() + burstWindowMs)
+        const secondsRemaining = Math.ceil((resetTime.getTime() - nowTimestamp) / 1000)
         console.log("[RateLimiter] Burst limit exceeded", {
           userId,
           burstCount,
           limit: this.DEFAULT_BURST_MAX,
+          secondsRemaining,
         })
         return {
           allowed: false,
-          reason: `Troppo veloce! Attendi ${Math.ceil((resetTime.getTime() - nowTimestamp) / 1000)} secondi`,
+          reason: `Troppo veloce! Attendi ${secondsRemaining} secondi`,
           resetTime,
           currentTime: amsterdamTime,
         }
@@ -191,16 +195,23 @@ export class AdvancedRateLimiter {
           burst_count: burstCount + 1,
         }
 
-        // Update reset timestamps if they were reset
-        if (lastDailyReset < startOfToday) {
+        if (shouldResetDaily) {
           updateData.last_daily_reset = startOfToday.toISOString()
         }
-        if (nowTimestamp - lastHourlyReset.getTime() >= hourInMs) {
+        if (shouldResetHourly) {
           updateData.last_hourly_reset = now.toISOString()
         }
-        if (nowTimestamp - lastBurstReset.getTime() >= burstWindowMs) {
+        if (shouldResetBurst) {
           updateData.last_burst_reset = now.toISOString()
         }
+
+        console.log("[RateLimiter] Updating counts", {
+          userId,
+          newBurstCount: burstCount + 1,
+          newHourlyCount: hourlyCount + 1,
+          newDailyCount: dailyCount + 1,
+          shouldResetBurst,
+        })
 
         const { error: updateError } = await supabase.from("rate_limits").update(updateData).eq("id", rateLimit.id)
 
@@ -212,7 +223,7 @@ export class AdvancedRateLimiter {
       return { allowed: true, currentTime: amsterdamTime }
     } catch (error) {
       console.error("[RateLimiter] Rate limit error:", error)
-      return { allowed: true, currentTime: amsterdamTime } // Fail open on error
+      return { allowed: true, currentTime: amsterdamTime }
     }
   }
 
