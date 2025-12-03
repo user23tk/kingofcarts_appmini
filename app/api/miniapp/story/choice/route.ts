@@ -32,8 +32,14 @@ export async function POST(request: NextRequest) {
   )
 
   if (!securityCheck.success) {
+    // Include burst information in the response
     return NextResponse.json(
-      { error: securityCheck.error, code: "RATE_LIMIT_EXCEEDED" },
+      { 
+        error: securityCheck.error, 
+        code: securityCheck.isBurst ? "BURST_LIMIT" : "RATE_LIMIT_EXCEEDED",
+        isBurst: securityCheck.isBurst,
+        resetTime: securityCheck.resetTime,
+      },
       { status: securityCheck.status }
     )
   }

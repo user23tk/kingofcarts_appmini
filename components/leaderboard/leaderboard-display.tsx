@@ -247,9 +247,6 @@ export function LeaderboardDisplay() {
                           <Badge className="bg-blue-500/20 text-blue-200 border-blue-500/30">
                             📚 {player.chaptersCompleted} capitoli
                           </Badge>
-                          <Badge className="bg-purple-500/20 text-purple-200 border-purple-500/30">
-                            🎭 {player.themesCompleted}/7 temi
-                          </Badge>
                           <Badge className="bg-yellow-500/20 text-yellow-200 border-yellow-500/30">
                             ⭐ {player.totalScore} punti
                           </Badge>
@@ -271,9 +268,8 @@ export function LeaderboardDisplay() {
                 <p>
                   <strong className="text-white">Come funziona il punteggio:</strong>
                 </p>
-                <p>• Capitoli completati × 10 punti</p>
-                <p>• Temi completati × 100 punti</p>
-                <p>• Punti Personalità (PP) accumulati nelle storie</p>
+                <p>• Completa i capitoli per guadagnare PP (Power Points)</p>
+                <p>• Le tue scelte influenzano i PP guadagnati</p>
                 <p className="mt-4">
                   <strong className="text-white">Vuoi partecipare?</strong> Inizia il tuo viaggio con King of Carts su
                   Telegram!

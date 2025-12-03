@@ -40,7 +40,15 @@ export async function POST(request: NextRequest) {
     )
 
     if (!securityCheck.success) {
-      return NextResponse.json({ error: securityCheck.error }, { status: securityCheck.status })
+      return NextResponse.json(
+        { 
+          error: securityCheck.error, 
+          code: securityCheck.isBurst ? "BURST_LIMIT" : "RATE_LIMIT_EXCEEDED",
+          isBurst: securityCheck.isBurst,
+          resetTime: securityCheck.resetTime,
+        }, 
+        { status: securityCheck.status }
+      )
     }
 
     const storyManager = new StoryManager()

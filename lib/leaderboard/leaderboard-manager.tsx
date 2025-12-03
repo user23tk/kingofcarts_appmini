@@ -222,7 +222,7 @@ export class LeaderboardManager {
       const name = player.firstName.length > 15 ? player.firstName.substring(0, 15) + "..." : player.firstName
 
       message += `${medal} <b>${name}</b>\n`
-      message += `   ⭐ <b>${player.totalScore} PP</b> • 🎭 ${player.themesCompleted} temi • 📚 ${player.chaptersCompleted} cap.\n\n`
+      message += `   ⭐ <b>${player.totalScore} PP</b> • 📚 ${player.chaptersCompleted} capitoli\n\n`
     })
 
     // Add user's rank if provided

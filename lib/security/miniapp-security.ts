@@ -140,7 +140,7 @@ export class MiniAppSecurity {
     ipAddress?: string,
     userAgent?: string,
     shouldCount = true,
-  ): Promise<{ success: true; userId: string } | { success: false; error: string; status: number }> {
+  ): Promise<{ success: true; userId: string } | { success: false; error: string; status: number; isBurst?: boolean; resetTime?: string }> {
     // 1. Validate userId format
     const validation = this.validateUserId(requestedUserId)
     if (!validation.valid) {
@@ -150,10 +150,18 @@ export class MiniAppSecurity {
     // 2. Check rate limits with shouldCount parameter
     const rateLimitResult = await this.checkRateLimit(requestedUserId, shouldCount)
     if (!rateLimitResult.allowed) {
+      // Detect if it's a burst limit (short wait time, typically < 2 minutes)
+      const isBurst = rateLimitResult.reason?.includes("Troppo veloce") || 
+                      rateLimitResult.reason?.includes("secondi") ||
+                      (rateLimitResult.resetTime && 
+                       (rateLimitResult.resetTime.getTime() - Date.now()) < 120000)
+      
       return {
         success: false,
-        error: `Rate limit exceeded. ${rateLimitResult.reason || ""} Reset at: ${rateLimitResult.resetTime?.toISOString() || "tomorrow"}`,
+        error: rateLimitResult.reason || "Rate limit exceeded",
         status: 429,
+        isBurst,
+        resetTime: rateLimitResult.resetTime?.toISOString(),
       }
     }
 
