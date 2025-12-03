@@ -34,7 +34,7 @@ export default function StoryPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [rateLimitError, setRateLimitError] = useState<{ resetTime?: string } | null>(null)
+  const [rateLimitError, setRateLimitError] = useState<{ resetTime?: string; isBurst?: boolean } | null>(null)
 
   const [chapterNumber, setChapterNumber] = useState(1)
   const [chapterTitle, setChapterTitle] = useState("")
@@ -72,7 +72,12 @@ export default function StoryPage() {
 
       if (response.status === 429) {
         const errorData = await response.json()
-        setRateLimitError({ resetTime: errorData.resetTime })
+        // Only show rate limit screen for daily/hourly limits, not burst
+        if (errorData.isBurst) {
+          setError("⏱️ Stai andando troppo veloce! Attendi qualche secondo e riprova.")
+          return
+        }
+        setRateLimitError({ resetTime: errorData.resetTime, isBurst: errorData.isBurst })
         return
       }
 
@@ -133,7 +138,14 @@ export default function StoryPage() {
 
       if (response.status === 429) {
         const errorData = await response.json()
-        setRateLimitError({ resetTime: errorData.resetTime })
+        // For burst limit, show a temporary warning but don't block the story
+        if (errorData.isBurst) {
+          setError("⏱️ Stai andando troppo veloce! Attendi qualche secondo e riprova.")
+          impactOccurred("medium")
+          return
+        }
+        // For daily/hourly limit, show the full rate limit screen
+        setRateLimitError({ resetTime: errorData.resetTime, isBurst: errorData.isBurst })
         impactOccurred("heavy")
         return
       }
@@ -190,7 +202,14 @@ export default function StoryPage() {
 
       if (response.status === 429) {
         const errorData = await response.json()
-        setRateLimitError({ resetTime: errorData.resetTime })
+        // For burst limit, show a temporary warning but don't block the story
+        if (errorData.isBurst) {
+          setError("⏱️ Stai andando troppo veloce! Attendi qualche secondo e riprova.")
+          impactOccurred("medium")
+          return
+        }
+        // For daily/hourly limit, show the full rate limit screen
+        setRateLimitError({ resetTime: errorData.resetTime, isBurst: errorData.isBurst })
         impactOccurred("heavy")
         return
       }
@@ -265,6 +284,31 @@ export default function StoryPage() {
   }
 
   if (rateLimitError) {
+    // Calcola il tempo rimanente per il reset
+    const getResetTimeMessage = () => {
+      if (!rateLimitError.resetTime) return "Riprova più tardi"
+      const reset = new Date(rateLimitError.resetTime)
+      const now = new Date()
+      const diffMs = reset.getTime() - now.getTime()
+      
+      if (diffMs <= 0) return "Pronto per giocare!"
+      
+      const diffMinutes = Math.floor(diffMs / (1000 * 60))
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+      
+      if (diffMinutes < 60) {
+        return `Reset tra ${diffMinutes} minuti`
+      } else if (diffHours < 24) {
+        return `Reset tra ${diffHours} ore`
+      } else {
+        return `Reset domani alle 00:00`
+      }
+    }
+
+    // Determina se è limite orario o giornaliero
+    const isHourlyLimit = rateLimitError.resetTime && 
+      (new Date(rateLimitError.resetTime).getTime() - Date.now()) < 60 * 60 * 1000
+
     return (
       <>
         <RateLimitNotice resetTime={rateLimitError.resetTime} onDismiss={() => router.push("/")} />
@@ -272,14 +316,25 @@ export default function StoryPage() {
           <AnimatedBackground theme={theme} intensity="low" variant="menu" />
           <Card className="relative z-10 max-w-md">
             <CardContent className="p-6 text-center">
-              <div className="mb-4 text-6xl">⏱️</div>
-              <p className="mb-4 text-lg font-semibold">Daily Limit Reached</p>
-              <p className="mb-6 text-muted-foreground">
-                You've reached your daily story limit. Come back tomorrow to continue your adventure!
+              <div className="mb-4 text-6xl">{isHourlyLimit ? "⏰" : "📅"}</div>
+              <p className="mb-2 text-lg font-semibold">
+                {isHourlyLimit ? "Limite Orario Raggiunto" : "Limite Giornaliero Raggiunto"}
+              </p>
+              <p className="mb-4 text-sm text-muted-foreground">
+                {isHourlyLimit 
+                  ? "Hai raggiunto il limite di 10 capitoli per questa ora."
+                  : "Hai raggiunto il limite di 50 capitoli per oggi."
+                }
+              </p>
+              <div className="mb-6 p-3 rounded-lg bg-primary/10 border border-primary/20">
+                <p className="text-sm font-medium text-primary">🕐 {getResetTimeMessage()}</p>
+              </div>
+              <p className="mb-6 text-sm text-muted-foreground">
+                Torna più tardi per continuare la tua avventura!
               </p>
               <Button onClick={() => router.push("/")} className="w-full">
                 <Home className="mr-2 h-4 w-4" />
-                Back to Home
+                Torna alla Home
               </Button>
             </CardContent>
           </Card>
