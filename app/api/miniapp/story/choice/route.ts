@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { StoryManager } from "@/lib/story/story-manager"
 import { SessionManager } from "@/lib/story/session-manager"
 import { PPValidator } from "@/lib/security/pp-validator"
+import { MiniAppSecurity } from "@/lib/security/miniapp-security"
 import { requireTelegramAuth } from "@/lib/miniapp/auth-middleware"
 import { QueryCache } from "@/lib/cache/query-cache"
 
@@ -16,6 +17,25 @@ export async function POST(request: NextRequest) {
     id: auth.telegramId!,
     username: auth.username,
     first_name: auth.firstName,
+  }
+
+  // Rate limit check
+  const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || undefined
+  const userAgent = request.headers.get("user-agent") || undefined
+  
+  const securityCheck = await MiniAppSecurity.validateRequest(
+    userId,
+    "STORY_CHOICE",
+    "story/choice",
+    ipAddress,
+    userAgent,
+  )
+
+  if (!securityCheck.success) {
+    return NextResponse.json(
+      { error: securityCheck.error, code: "RATE_LIMIT_EXCEEDED" },
+      { status: securityCheck.status }
+    )
   }
 
   try {

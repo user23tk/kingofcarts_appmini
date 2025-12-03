@@ -11,10 +11,10 @@ export class MiniAppRateLimiter {
   /**
    * Check rate limit for Mini App API calls
    * @param userId - User ID (UUID from database)
-   * @param shouldCount - Whether to count this check towards the limit
+   * @param shouldCount - Whether to count this check towards the limit (default: true)
    * @returns Rate limit result with allowed status
    */
-  static async checkLimit(userId: string, shouldCount = false): Promise<RateLimitResult> {
+  static async checkLimit(userId: string, shouldCount = true): Promise<RateLimitResult> {
     try {
       const result = await AdvancedRateLimiter.checkRateLimit(userId, undefined, shouldCount)
 

@@ -122,24 +122,41 @@ export class AdvancedRateLimiter {
       const hourInMs = 60 * 60 * 1000
       const burstWindowMs = this.DEFAULT_BURST_WINDOW * 1000
 
-      // Check if resets are needed
+      // Check if resets are needed and reset counters BEFORE checking limits
       if (lastDailyReset < startOfToday) {
+        console.log("[RateLimiter] Daily counter reset triggered", {
+          userId,
+          oldCount: dailyCount,
+          lastReset: lastDailyReset.toISOString(),
+          todayStart: startOfToday.toISOString(),
+        })
         dailyCount = 0
         shouldResetDaily = true
       }
 
       if (nowTimestamp - lastHourlyReset.getTime() >= hourInMs) {
+        console.log("[RateLimiter] Hourly counter reset triggered", {
+          userId,
+          oldCount: hourlyCount,
+          timeSinceReset: Math.floor((nowTimestamp - lastHourlyReset.getTime()) / 60000) + " minutes",
+        })
         hourlyCount = 0
         shouldResetHourly = true
       }
 
       if (nowTimestamp - lastBurstReset.getTime() >= burstWindowMs) {
+        console.log("[RateLimiter] Burst counter reset triggered", {
+          userId,
+          oldCount: burstCount,
+          timeSinceReset: Math.floor((nowTimestamp - lastBurstReset.getTime()) / 1000) + " seconds",
+        })
         burstCount = 0
         shouldResetBurst = true
       }
 
       // 1. Check burst limit first (most restrictive short-term)
-      if (burstCount >= this.DEFAULT_BURST_MAX) {
+      // Only check if NOT being reset (counter was just reset = always allowed)
+      if (!shouldResetBurst && burstCount >= this.DEFAULT_BURST_MAX) {
         const resetTime = new Date(lastBurstReset.getTime() + burstWindowMs)
         const secondsRemaining = Math.ceil((resetTime.getTime() - nowTimestamp) / 1000)
         console.log("[RateLimiter] Burst limit exceeded", {
@@ -157,7 +174,7 @@ export class AdvancedRateLimiter {
       }
 
       // 2. Check hourly limit
-      if (hourlyCount >= this.DEFAULT_HOURLY_LIMIT) {
+      if (!shouldResetHourly && hourlyCount >= this.DEFAULT_HOURLY_LIMIT) {
         const resetTime = new Date(lastHourlyReset.getTime() + hourInMs)
         console.log("[RateLimiter] Hourly limit exceeded", {
           userId,
@@ -173,7 +190,7 @@ export class AdvancedRateLimiter {
       }
 
       // 3. Check daily limit
-      if (dailyCount >= this.DEFAULT_DAILY_LIMIT) {
+      if (!shouldResetDaily && dailyCount >= this.DEFAULT_DAILY_LIMIT) {
         const resetTime = this.getTomorrowMidnight()
         console.log("[RateLimiter] Daily limit exceeded", {
           userId,
@@ -189,12 +206,14 @@ export class AdvancedRateLimiter {
       }
 
       if (shouldCount) {
+        // When resetting, start from 1 (this request), otherwise increment
         const updateData: Record<string, any> = {
           daily_count: dailyCount + 1,
           hourly_count: hourlyCount + 1,
           burst_count: burstCount + 1,
         }
 
+        // Update reset timestamps when counters were reset
         if (shouldResetDaily) {
           updateData.last_daily_reset = startOfToday.toISOString()
         }
@@ -210,7 +229,7 @@ export class AdvancedRateLimiter {
           newBurstCount: burstCount + 1,
           newHourlyCount: hourlyCount + 1,
           newDailyCount: dailyCount + 1,
-          shouldResetBurst,
+          wasReset: { daily: shouldResetDaily, hourly: shouldResetHourly, burst: shouldResetBurst },
         })
 
         const { error: updateError } = await supabase.from("rate_limits").update(updateData).eq("id", rateLimit.id)
