@@ -140,17 +140,15 @@ export async function GET(request: NextRequest) {
           console.error("[Dashboard] Failed to get user event stats:", statsErr)
         }
 
-        const isNatale = activeEvent.name.toLowerCase().includes("natale")
-
         activeEvents = [
           {
             id: activeEvent.id,
             theme: activeEvent.name,
-            title: isNatale ? "Natale contest 2025" : (activeEvent.title || activeEvent.name),
-            description: isNatale ? "un evento natalizio by kingofcarts.eth" : activeEvent.description,
-            emoji: activeEvent.event_emoji || activeEvent.emoji || "🎮",
+            title: activeEvent.title || activeEvent.name,
+            description: activeEvent.description,
+            emoji: activeEvent.event_emoji || activeEvent.emoji || "🎉",
             multiplier: activeEvent.pp_multiplier || 1.0,
-            endsAt: isNatale ? "2026-01-06T23:59:59Z" : activeEvent.event_end_date,
+            endsAt: activeEvent.event_end_date,
           },
         ]
       }

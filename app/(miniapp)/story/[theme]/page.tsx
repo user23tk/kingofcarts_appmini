@@ -355,7 +355,10 @@ export default function StoryPage() {
               <p className="text-muted-foreground">You earned {sessionPP} PP this chapter</p>
             </div>
             <div className="mb-6 rounded-lg bg-muted/50 p-6">
-              <p className="whitespace-pre-wrap text-lg leading-relaxed">{finaleText}</p>
+              <div 
+                className="whitespace-pre-wrap text-lg leading-relaxed" 
+                dangerouslySetInnerHTML={{ __html: finaleText }}
+              />
             </div>
             <div className="mb-6 flex items-center justify-center gap-8 text-sm">
               <div>
@@ -391,7 +394,7 @@ export default function StoryPage() {
         <div className="flex-shrink-0">
           <StoryProgress
             currentScene={currentScene.index}
-            totalScenes={10}
+            totalScenes={8}
             currentPP={totalPP}
             sessionPP={sessionPP}
             theme={theme}

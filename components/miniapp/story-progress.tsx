@@ -4,8 +4,8 @@ import { motion } from "framer-motion"
 import { THEME_COLORS } from "@/lib/theme-colors"
 
 interface StoryProgressProps {
-  currentScene: number // 0-9
-  totalScenes: number // 10
+  currentScene: number // 0-7
+  totalScenes: number // 8 (default)
   currentPP: number
   sessionPP: number
   theme: string

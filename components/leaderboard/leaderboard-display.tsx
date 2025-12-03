@@ -248,7 +248,7 @@ export function LeaderboardDisplay() {
                             📚 {player.chaptersCompleted} capitoli
                           </Badge>
                           <Badge className="bg-yellow-500/20 text-yellow-200 border-yellow-500/30">
-                            ⭐ {player.totalScore} punti
+                            ⭐ {player.totalScore} PP
                           </Badge>
                         </div>
                       </div>

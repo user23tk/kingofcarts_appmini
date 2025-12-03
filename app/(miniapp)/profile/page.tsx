@@ -192,16 +192,20 @@ export default function ProfilePage() {
           transition={{ delay: 0.1 }}
           className="grid grid-cols-2 gap-4 mb-6"
         >
-          <Card className="bg-background/80 backdrop-blur-sm">
+          <Card className="bg-background/80 backdrop-blur-sm col-span-2">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <Trophy className="h-5 w-5 text-primary" />
-                <Badge variant="secondary">{profileData?.overallStats.totalPP || 0}</Badge>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-6 w-6 text-yellow-500" />
+                  <p className="text-lg font-bold">Total PP</p>
+                </div>
+                <Badge variant="secondary" className="text-lg px-4 py-1">
+                  {profileData?.overallStats.totalPP || 0}
+                </Badge>
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-sm font-medium">Total PP</p>
-              <p className="text-xs text-muted-foreground">Points earned</p>
+              <p className="text-xs text-muted-foreground">Power Points earned</p>
             </CardContent>
           </Card>
 
@@ -214,21 +218,6 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm font-medium">Chapters</p>
-              <p className="text-xs text-muted-foreground">Completed</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-background/80 backdrop-blur-sm">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <Sparkles className="h-5 w-5 text-accent" />
-                <Badge variant="secondary">
-                  {profileData?.overallStats.themesCompleted || 0}/{profileData?.overallStats.totalThemes || 0}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm font-medium">Themes</p>
               <p className="text-xs text-muted-foreground">Completed</p>
             </CardContent>
           </Card>

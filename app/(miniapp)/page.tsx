@@ -9,6 +9,7 @@ import { AnimatedBackground } from "@/components/miniapp/animated-background"
 import { hapticFeedback } from "@/lib/telegram/webapp-client"
 import { motion } from "framer-motion"
 import useSWR from "swr"
+import { OnboardingBonusModal } from "@/components/miniapp/onboarding-bonus-modal"
 
 interface DashboardData {
   user: {
@@ -122,6 +123,9 @@ export default function MiniAppHome() {
     <div className="relative min-h-screen pb-20">
       <AnimatedBackground theme={(dashboardData.activeSession?.theme || "fantasy") as any} intensity="low" variant="menu" />
 
+      {/* Onboarding Bonus Modal */}
+      {user?.id && <OnboardingBonusModal userId={user.id} onClaimed={() => mutate()} />}
+
       <div className="relative z-10 p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
@@ -180,9 +184,9 @@ export default function MiniAppHome() {
                       <span className="text-4xl">{dashboardData.activeEvents[0].emoji}</span>
                     </div>
                     <div>
-                      <CardTitle className="text-xl mb-1">Natale contest 2025</CardTitle>
+                      <CardTitle className="text-xl mb-1">{dashboardData.activeEvents[0].title}</CardTitle>
                       <CardDescription className="text-sm">
-                        un evento natalizio by kingofcarts.eth
+                        {dashboardData.activeEvents[0].description}
                       </CardDescription>
                     </div>
                   </div>
@@ -194,7 +198,14 @@ export default function MiniAppHome() {
                     <Clock className="w-4 h-4 text-muted-foreground" />
                     <span className="text-muted-foreground">Termina il:</span>
                     <span className="font-semibold">
-                      06/01/2026
+                      {dashboardData.activeEvents[0].endsAt 
+                        ? new Date(dashboardData.activeEvents[0].endsAt).toLocaleDateString('it-IT', { 
+                            day: '2-digit', 
+                            month: '2-digit', 
+                            year: 'numeric' 
+                          })
+                        : 'N/A'
+                      }
                     </span>
                   </div>
                   <Button size="sm" className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold">
@@ -278,21 +289,6 @@ export default function MiniAppHome() {
           <Card className="bg-background/80 backdrop-blur-sm">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <Sparkles className="h-5 w-5 text-secondary" />
-                <Badge variant="secondary">
-                  {dashboardData.stats.themesUnlocked}/{dashboardData.stats.totalThemes}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm font-medium">Themes</p>
-              <p className="text-xs text-muted-foreground">Unlocked</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-background/80 backdrop-blur-sm">
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
                 <Trophy className="h-5 w-5 text-accent" />
                 <Badge variant="secondary">
                   {dashboardData.user.rank === 0 ? "N/A" : `#${dashboardData.user.rank}`}
@@ -307,16 +303,20 @@ export default function MiniAppHome() {
             </CardContent>
           </Card>
 
-          <Card className="bg-background/80 backdrop-blur-sm">
+          <Card className="bg-background/80 backdrop-blur-sm col-span-2">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <TrendingUp className="h-5 w-5 text-chart-1" />
-                <Badge variant="secondary">{dashboardData.user.totalPP}</Badge>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-6 w-6 text-yellow-500" />
+                  <p className="text-lg font-bold">Total PP</p>
+                </div>
+                <Badge variant="secondary" className="text-lg px-4 py-1">
+                  {dashboardData.user.totalPP}
+                </Badge>
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-sm font-medium">Total PP</p>
-              <p className="text-xs text-muted-foreground">Points earned</p>
+              <p className="text-xs text-muted-foreground">Power Points earned</p>
             </CardContent>
           </Card>
         </motion.div>
