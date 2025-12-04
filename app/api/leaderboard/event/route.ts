@@ -36,7 +36,7 @@ function formatEventResponse(event: ActiveEvent, players: EventPlayer[]): EventR
       id: event.id,
       theme_key: event.name,
       event_name: event.title || event.name,
-      event_emoji: event.event_emoji || event.emoji || "🎮",
+      event_emoji: event.event_emoji || event.emoji || "🎄",
       pp_multiplier: event.pp_multiplier,
       event_end_date: event.event_end_date,
       description: event.description,

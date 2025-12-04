@@ -33,8 +33,10 @@ export function OnboardingBonusModal({ userId, onClaimed }: OnboardingBonusModal
   const checkBonusStatus = async () => {
     try {
       setIsLoading(true)
-      const response = await fetch(`/api/miniapp/onboarding/bonus?userId=${userId}`)
-
+      // Get initData from Telegram WebApp
+      const initData = (window as any).Telegram?.WebApp?.initData || ""
+      const response = await fetch(`/api/miniapp/onboarding/bonus?initData=${encodeURIComponent(initData)}`)
+      
       if (!response.ok) {
         console.error("[OnboardingBonus] Failed to check status")
         return
@@ -60,10 +62,12 @@ export function OnboardingBonusModal({ userId, onClaimed }: OnboardingBonusModal
       setIsClaiming(true)
       hapticFeedback("medium")
 
+      // Get initData from Telegram WebApp
+      const initData = (window as any).Telegram?.WebApp?.initData || ""
       const response = await fetch("/api/miniapp/onboarding/bonus", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ initData }),
       })
 
       const data = await response.json()
@@ -71,7 +75,7 @@ export function OnboardingBonusModal({ userId, onClaimed }: OnboardingBonusModal
       if (data.success) {
         hapticFeedback("heavy")
         setIsOpen(false)
-
+        
         // Wait a bit before calling onClaimed to show success state
         setTimeout(() => {
           onClaimed?.()
@@ -104,7 +108,9 @@ export function OnboardingBonusModal({ userId, onClaimed }: OnboardingBonusModal
           >
             <Gift className="h-10 w-10 text-white" />
           </motion.div>
-          <DialogTitle className="text-center text-2xl">🎉 Benvenuto!</DialogTitle>
+          <DialogTitle className="text-center text-2xl">
+            🎉 Benvenuto!
+          </DialogTitle>
           <DialogDescription className="text-center">
             C'è un giveaway attivo e hai diritto a un bonus speciale!
           </DialogDescription>
@@ -117,7 +123,9 @@ export function OnboardingBonusModal({ userId, onClaimed }: OnboardingBonusModal
               <p className="text-4xl font-bold text-yellow-500">+200 PP</p>
               <Sparkles className="h-6 w-6 text-yellow-500" />
             </div>
-            <p className="text-sm text-muted-foreground">Bonus Onboarding</p>
+            <p className="text-sm text-muted-foreground">
+              Bonus Onboarding
+            </p>
           </div>
 
           <div className="text-center text-sm text-muted-foreground">
@@ -143,7 +151,12 @@ export function OnboardingBonusModal({ userId, onClaimed }: OnboardingBonusModal
             )}
           </Button>
 
-          <Button onClick={() => setIsOpen(false)} variant="ghost" className="w-full" disabled={isClaiming}>
+          <Button
+            onClick={() => setIsOpen(false)}
+            variant="ghost"
+            className="w-full"
+            disabled={isClaiming}
+          >
             Forse più tardi
           </Button>
         </div>

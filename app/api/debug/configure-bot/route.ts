@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     // 1. Configure bot commands
     const commands = [
-      { command: "start", description: "🎮 Apri la Mini App e inizia a giocare" },
+      { command: "start", description: "🎄 Apri la Mini App e inizia a giocare" },
       { command: "help", description: "📖 Mostra i comandi e come giocare" },
       { command: "stats", description: "📊 Visualizza le tue statistiche" },
       { command: "leaderboard", description: "🏆 Visualizza la classifica globale" },
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
         "4. Bot Settings → Inline Mode → Turn on",
         "5. Inline Feedback → Set to 100% (per analytics)",
         "6. Menu Button → Configure menu button",
-        `   - Button text: 🎮 Gioca`,
+        `   - Button text: 🎄 Gioca`,
         `   - URL: ${appDomain}`,
       ],
     })

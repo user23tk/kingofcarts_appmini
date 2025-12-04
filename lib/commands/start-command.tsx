@@ -25,7 +25,7 @@ Sono qui per guidarti a "vedere oltre l'arcobaleno" e diffondere amore e pace at
 
 ${activeEvent ? `\n🎉 <b>EVENTO SPECIALE ATTIVO: ${activeEvent.name || activeEvent.title}</b> ${activeEvent.event_emoji || "🎃"}\n` : ""}
 
-Ogni tema contiene storie infinite generate dall'AI! Apri la Mini App per iniziare la tua avventura! 🎮
+Ogni tema contiene storie infinite generate dall'AI! Apri la Mini App per iniziare la tua avventura! 🎄
   `,
     playerName,
   )
@@ -34,7 +34,7 @@ Ogni tema contiene storie infinite generate dall'AI! Apri la Mini App per inizia
     inline_keyboard: [
       [
         {
-          text: "🎮 Apri King of Carts",
+          text: "🎄 Apri King of Carts",
           web_app: { url: process.env.APP_DOMAIN || "https://v0-beta-3-mini-app.vercel.app" },
         },
       ],

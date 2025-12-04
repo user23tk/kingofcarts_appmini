@@ -198,7 +198,7 @@ export function GiveawayManager() {
         throw new Error(data.error || "Failed to upload image")
       }
 
-      // Use the public URL from Vercel Blob
+      // Use the public URL from Supabase Storage
       setNewGiveaway({ ...newGiveaway, prize_image_url: data.url })
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to upload image")

@@ -156,7 +156,7 @@ Scrivi @${process.env.BOT_USERNAME || "kingofcarts_betabot"} in qualsiasi chat p
     inline_keyboard: [
       [
         {
-          text: "🎮 Apri Mini App",
+          text: "🎄 Apri Mini App",
           web_app: { url: process.env.APP_DOMAIN || "https://v0-beta-3-mini-app.vercel.app" },
         },
       ],
@@ -327,7 +327,7 @@ async function handleInlineQuery(inlineQuery: any) {
       reply_markup: {
         inline_keyboard: [
           [{ text: "🎭 Inizia Avventura", url: inviteUrl }],
-          [{ text: "🎮 Apri Mini App", url: miniAppUrl }],
+          [{ text: "🎄 Apri Mini App", url: miniAppUrl }],
         ],
       },
     })
