@@ -31,5 +31,5 @@ Scripts should be executed in numerical order.
 Use the Supabase dashboard or the v0 SQL execution tool to run these scripts in order.
 \`\`\`
 
-```sql file="scripts/015_fix_global_stats_constraint.sql" isDeleted="true" isMoved="true" isMovedTo="scripts/deprecated/015_fix_global_stats_constraint.sql"
+\`\`\`sql file="scripts/015_fix_global_stats_constraint.sql" isDeleted="true" isMoved="true" isMovedTo="scripts/deprecated/015_fix_global_stats_constraint.sql"
 ...moved to scripts/deprecated/015_fix_global_stats_constraint.sql...
