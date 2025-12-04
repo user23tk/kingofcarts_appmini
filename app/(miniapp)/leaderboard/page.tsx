@@ -16,11 +16,10 @@ import useSWR from "swr"
 
 interface LeaderboardEntry {
   rank: number
-  userId: string
-  username: string
+  oderId: string
+  firstName: string
   totalPP: number
   chaptersCompleted: number
-  themesCompleted: number
   isCurrentUser: boolean
 }
 
@@ -83,10 +82,10 @@ export default function LeaderboardPage() {
   })
 
   // Fetch leaderboard anche senza user (per browser debug) - su Telegram userà l'userId per evidenziare posizione
-  const leaderboardUrl = user?.id 
-    ? `/api/miniapp/leaderboard?userId=${user.id}&limit=100` 
+  const leaderboardUrl = user?.id
+    ? `/api/miniapp/leaderboard?userId=${user.id}&limit=100`
     : `/api/miniapp/leaderboard?limit=100`
-  
+
   const {
     data: leaderboardData,
     error: leaderboardError,
@@ -258,7 +257,7 @@ export default function LeaderboardPage() {
                     <div className="bg-[#242F3D] rounded-lg p-3 mb-2 border border-[#2C3847]">
                       <Medal className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                       <p className="text-sm font-bold text-white truncate">
-                        {leaderboardData.rankings[1]?.username || "N/A"}
+                        {leaderboardData.rankings[1]?.firstName || "N/A"}
                       </p>
                       <p className="text-xs text-[#FFD700]">{leaderboardData.rankings[1]?.totalPP || 0} PP</p>
                     </div>
@@ -269,7 +268,7 @@ export default function LeaderboardPage() {
                     <div className="bg-gradient-to-br from-yellow-500/20 to-yellow-600/20 rounded-lg p-4 mb-2 border-2 border-yellow-500/50">
                       <Crown className="w-10 h-10 text-yellow-500 mx-auto mb-2" />
                       <p className="text-sm font-bold text-white truncate">
-                        {leaderboardData.rankings[0]?.username || "N/A"}
+                        {leaderboardData.rankings[0]?.firstName || "N/A"}
                       </p>
                       <p className="text-xs text-[#FFD700]">{leaderboardData.rankings[0]?.totalPP || 0} PP</p>
                     </div>
@@ -280,7 +279,7 @@ export default function LeaderboardPage() {
                     <div className="bg-[#242F3D] rounded-lg p-3 mb-2 border border-[#2C3847]">
                       <Medal className="w-8 h-8 text-amber-600 mx-auto mb-2" />
                       <p className="text-sm font-bold text-white truncate">
-                        {leaderboardData.rankings[2]?.username || "N/A"}
+                        {leaderboardData.rankings[2]?.firstName || "N/A"}
                       </p>
                       <p className="text-xs text-[#FFD700]">{leaderboardData.rankings[2]?.totalPP || 0} PP</p>
                     </div>
@@ -315,7 +314,7 @@ export default function LeaderboardPage() {
                     <div className="space-y-2 max-h-[500px] overflow-y-auto">
                       {leaderboardData.rankings.map((entry, index) => (
                         <motion.div
-                          key={entry.userId}
+                          key={entry.oderId}
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: index * 0.02 }}
@@ -331,12 +330,10 @@ export default function LeaderboardPage() {
                               <p
                                 className={`text-sm font-medium truncate ${entry.isCurrentUser ? "text-[#2AABEE]" : "text-white"}`}
                               >
-                                {entry.username}
+                                {entry.firstName}
                                 {entry.isCurrentUser && <span className="ml-2 text-xs">(You)</span>}
                               </p>
-                              <p className="text-xs text-gray-400">
-                                📚 {entry.chaptersCompleted} capitoli • 🎭 {entry.themesCompleted} temi
-                              </p>
+                              <p className="text-xs text-gray-400">{entry.chaptersCompleted} capitoli completati</p>
                             </div>
                           </div>
                           <Badge variant="secondary" className="bg-[#FFD700]/20 text-[#FFD700] border-[#FFD700]/30">

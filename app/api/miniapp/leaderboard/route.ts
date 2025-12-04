@@ -66,12 +66,10 @@ export async function GET(request: NextRequest) {
       rankings: players.map((player) => ({
         rank: player.rank,
         userId: player.userId,
-        username: player.username || player.firstName || "Anonymous",
+        firstName: player.firstName || "Anonymous",
         totalPP: player.totalScore,
         chaptersCompleted: player.chaptersCompleted,
-        themesCompleted: player.themesCompleted || 0,
         isCurrentUser: userId ? player.userId === userId : false,
-        lastActive: new Date().toISOString(),
       })),
       userRank: userRank
         ? {
