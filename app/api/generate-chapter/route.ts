@@ -1,36 +1,18 @@
 import { streamText } from "ai"
 import { xai } from "@ai-sdk/xai"
 import type { NextRequest } from "next/server"
-import { RateLimit } from "@/lib/security/rate-limit" // Import RateLimit
+import { requireDebugAuth } from "@/lib/security/debug-auth" // Import requireDebugAuth
 
 export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
   try {
-    const { theme, chapterNumber, existingChapters, userId } = await request.json()
-
-    // Security: Require userId from Telegram auth
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ error: "Authentication required" }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
-      )
+    const auth = await requireDebugAuth(request)
+    if (!auth.authorized) {
+      return auth.response!
     }
 
-    // Security: Stricter rate limiting per user - 3 generations per 2 minutes
-    const rateLimit = await RateLimit.check(`generate_chapter:${userId}`, { interval: 120, limit: 3 })
-
-    if (!rateLimit.success) {
-      return new Response(
-        JSON.stringify({
-          error: "Rate limit exceeded. Please wait a moment before generating more chapters.",
-        }),
-        {
-          status: 429,
-          headers: { "Content-Type": "application/json" },
-        },
-      )
-    }
+    const { theme, chapterNumber, existingChapters, isEvent, eventMultiplier, eventEmoji } = await request.json()
 
     if (!theme) {
       return new Response("Theme is required", { status: 400 })

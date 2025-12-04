@@ -2,12 +2,33 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Shield, Eye, EyeOff } from "lucide-react"
+
+export function useDebugAuth() {
+  const [token, setToken] = useState<string | null>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+  useEffect(() => {
+    const storedToken = sessionStorage.getItem("debug_auth_token")
+    if (storedToken) {
+      setToken(storedToken)
+      setIsAuthenticated(true)
+    }
+  }, [])
+
+  const logout = useCallback(() => {
+    sessionStorage.removeItem("debug_auth_token")
+    setToken(null)
+    setIsAuthenticated(false)
+  }, [])
+
+  return { token, isAuthenticated, logout }
+}
 
 interface DebugAuthProps {
   onAuthenticated: () => void

@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { validateChapterStructure } from "@/lib/schemas/chapter-schema"
 import { Switch } from "@/components/ui/switch"
+import { useDebugAuth } from "@/components/debug/debug-auth"
 
 const AVAILABLE_THEMES = ["fantasy", "sci-fi", "mystery", "romance", "adventure", "horror", "comedy"]
 
@@ -33,6 +34,8 @@ export function StoryGenerator() {
   const [saveLocation, setSaveLocation] = useState<"json" | "database">("json")
   const [validationStatus, setValidationStatus] = useState<"valid" | "invalid" | "pending" | null>(null)
   const [validationError, setValidationError] = useState<string>("")
+
+  const { token } = useDebugAuth()
 
   const [isEventMode, setIsEventMode] = useState(false)
   const [eventThemes, setEventThemes] = useState<EventTheme[]>([])
@@ -89,6 +92,11 @@ export function StoryGenerator() {
       return
     }
 
+    if (!token) {
+      setError("Autenticazione richiesta. Effettua il login come admin.")
+      return
+    }
+
     setIsGenerating(true)
     setError("")
     setGeneratedContent("")
@@ -117,11 +125,15 @@ export function StoryGenerator() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(generationContext),
       })
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("Non autorizzato. Effettua nuovamente il login.")
+        }
         throw new Error("Errore nella generazione del capitolo")
       }
 
@@ -172,6 +184,7 @@ export function StoryGenerator() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             theme: selectedTheme,
