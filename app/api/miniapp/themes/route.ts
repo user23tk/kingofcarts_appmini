@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
     // For each theme, count active chapters
     const themesWithCounts = await Promise.all(
-      (themesData || []).map(async (theme) => {
+      (themesData || []).map(async (theme: any) => {
         const { count, error: countError } = await supabase
           .from("story_chapters")
           .select("*", { count: "exact", head: true })
