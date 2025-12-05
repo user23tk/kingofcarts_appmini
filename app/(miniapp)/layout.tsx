@@ -71,7 +71,7 @@ export default function MiniAppLayout({
         <div
           className="fixed inset-0 bg-background overflow-hidden"
           style={{
-            paddingTop: "calc(var(--total-safe-top, 0px) + 72px)",
+            paddingTop: "calc(var(--total-safe-top, 0px) + 84px)",
             paddingBottom: "var(--safe-area-bottom, 0px)",
             paddingLeft: "calc(var(--safe-area-left, 0px) + 16px)",
             paddingRight: "calc(var(--safe-area-right, 0px) + 16px)",
