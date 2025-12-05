@@ -124,12 +124,12 @@ export default function ThemesPage() {
   }
 
   return (
-    <div className="min-h-screen p-4 pb-20">
+    <div className="min-h-screen p-2 pb-20">
       {/* Header */}
       <div className="mb-6 space-y-2">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Choose Your Theme</h1>
+            <h1 className="text-xl font-bold">Choose Your Theme</h1>
             <p className="text-sm text-muted-foreground">
               {user?.firstName ? `Welcome back, ${user.firstName}!` : "Select a story to begin"}
             </p>

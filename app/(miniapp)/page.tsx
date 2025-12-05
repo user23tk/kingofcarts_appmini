@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/miniapp/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Sparkles, BookOpen, Trophy, TrendingUp, Play, Clock, Zap } from "lucide-react"
+import { Sparkles, BookOpen, Trophy, Play, Clock } from "lucide-react"
 import { AnimatedBackground } from "@/components/miniapp/animated-background"
 import { hapticFeedback } from "@/lib/telegram/webapp-client"
 import { motion } from "framer-motion"
@@ -121,18 +121,22 @@ export default function MiniAppHome() {
 
   return (
     <div className="relative min-h-screen pb-20">
-      <AnimatedBackground theme={(dashboardData.activeSession?.theme || "fantasy") as any} intensity="low" variant="menu" />
+      <AnimatedBackground
+        theme={(dashboardData.activeSession?.theme || "fantasy") as any}
+        intensity="low"
+        variant="menu"
+      />
 
       {/* Onboarding Bonus Modal */}
       {user?.id && <OnboardingBonusModal userId={user.id} onClaimed={() => mutate()} />}
 
-      <div className="relative z-10 p-4">
+      <div className="relative z-10 p-2">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           className="mb-6 flex justify-center"
         >
-          <img src="/logo.png" alt="King of Carts - The Game" className="w-48 h-48 object-contain drop-shadow-2xl" />
+          <img src="/logo.png" alt="King of Carts - The Game" className="w-40 h-40 object-contain drop-shadow-2xl" />
         </motion.div>
 
         {/* Hero Section */}
@@ -142,7 +146,7 @@ export default function MiniAppHome() {
           className="mb-6 text-center space-y-4"
         >
           <div>
-            <h1 className="text-3xl font-bold text-balance">Welcome back, {dashboardData.user.firstName}!</h1>
+            <h1 className="text-2xl font-bold text-balance">Welcome back, {dashboardData.user.firstName}!</h1>
             <p className="text-muted-foreground mt-2">Continue your epic journey</p>
           </div>
 
@@ -185,9 +189,7 @@ export default function MiniAppHome() {
                     </div>
                     <div>
                       <CardTitle className="text-xl mb-1">{dashboardData.activeEvents[0].title}</CardTitle>
-                      <CardDescription className="text-sm">
-                        {dashboardData.activeEvents[0].description}
-                      </CardDescription>
+                      <CardDescription className="text-sm">{dashboardData.activeEvents[0].description}</CardDescription>
                     </div>
                   </div>
                 </div>
@@ -198,14 +200,13 @@ export default function MiniAppHome() {
                     <Clock className="w-4 h-4 text-muted-foreground" />
                     <span className="text-muted-foreground">Termina il:</span>
                     <span className="font-semibold">
-                      {dashboardData.activeEvents[0].endsAt 
-                        ? new Date(dashboardData.activeEvents[0].endsAt).toLocaleDateString('it-IT', { 
-                            day: '2-digit', 
-                            month: '2-digit', 
-                            year: 'numeric' 
+                      {dashboardData.activeEvents[0].endsAt
+                        ? new Date(dashboardData.activeEvents[0].endsAt).toLocaleDateString("it-IT", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
                           })
-                        : 'N/A'
-                      }
+                        : "N/A"}
                     </span>
                   </div>
                   <Button size="sm" className="bg-yellow-500 hover:bg-yellow-600 text-black font-bold">

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ArrowLeft, Trophy, Medal, Crown, Users, BookOpen, Target, Zap, Clock } from "lucide-react"
+import { Trophy, Medal, Crown, Users, BookOpen, Target, Zap, Clock } from "lucide-react"
 import { useBackButton, hapticFeedback } from "@/lib/telegram/webapp-client"
 import { motion } from "framer-motion"
 import useSWR from "swr"
@@ -150,21 +150,10 @@ export default function LeaderboardPage() {
     <div className="relative min-h-screen pb-20">
       <div className="absolute inset-0 bg-[#17212B]" />
 
-      <div className="relative z-10 p-4">
+      <div className="relative z-10 p-2">
         <div className="mb-6 flex items-center space-x-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-white hover:bg-white/10"
-            onClick={() => {
-              hapticFeedback("light")
-              router.push("/")
-            }}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
           <div>
-            <h1 className="text-2xl font-bold text-white">Leaderboard</h1>
+            <h1 className="text-xl font-bold text-white">Leaderboard</h1>
             <p className="text-sm text-gray-400">
               {activeEvent ? "Contest e classifica globale" : "Top players worldwide"}
             </p>

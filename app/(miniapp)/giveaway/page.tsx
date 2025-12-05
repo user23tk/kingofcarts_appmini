@@ -275,7 +275,7 @@ export default function GiveawayPage() {
     <div className="relative min-h-screen pb-24">
       <AnimatedBackground theme="fantasy" intensity="low" variant="menu" />
 
-      <div className="relative z-10 p-4 space-y-4">
+      <div className="relative z-10 p-2 space-y-3">
         {/* Header with back button */}
         <div className="flex items-center space-x-4 mb-2">
           <Button
@@ -289,7 +289,7 @@ export default function GiveawayPage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">Giveaway</h1>
+            <h1 className="text-xl font-bold">Giveaway</h1>
             <p className="text-sm text-muted-foreground">Partecipa e vinci!</p>
           </div>
         </div>

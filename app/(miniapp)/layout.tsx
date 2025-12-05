@@ -72,10 +72,11 @@ export default function MiniAppLayout({
           className="fixed inset-0 bg-background overflow-hidden"
           style={{
             // Use CSS variables for safe area, with fallbacks
-            paddingTop: "var(--total-safe-top, 0px)",
+            // Add extra top padding (56px = pt-14) for Telegram header
+            paddingTop: "calc(var(--total-safe-top, 0px) + 56px)",
             paddingBottom: "var(--safe-area-bottom, 0px)",
-            paddingLeft: "var(--safe-area-left, 0px)",
-            paddingRight: "var(--safe-area-right, 0px)",
+            paddingLeft: "calc(var(--safe-area-left, 0px) + 12px)",
+            paddingRight: "calc(var(--safe-area-right, 0px) + 12px)",
           }}
         >
           <div className="h-full mx-auto max-w-2xl flex flex-col">
