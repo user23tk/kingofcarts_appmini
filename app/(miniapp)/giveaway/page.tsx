@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
-import { ArrowLeft, Gift, HelpCircle, Sparkles, Trophy, Ticket, Star, Zap } from "lucide-react"
+import { Gift, HelpCircle, Sparkles, Trophy, Ticket, Star, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AnimatedBackground } from "@/components/miniapp/animated-background"
@@ -122,16 +122,7 @@ export default function GiveawayPage() {
         <div className="relative z-10 p-4">
           {/* Header */}
           <div className="mb-6 flex items-center space-x-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                hapticFeedback("light")
-                router.push("/")
-              }}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
+            {/* Removed manual back button */}
             <div>
               <h1 className="text-2xl font-bold">Giveaway</h1>
               <p className="text-sm text-muted-foreground">Premi e Contest</p>
@@ -276,22 +267,10 @@ export default function GiveawayPage() {
       <AnimatedBackground theme="fantasy" intensity="low" variant="menu" />
 
       <div className="relative z-10 p-2 space-y-3">
-        {/* Header with back button */}
-        <div className="flex items-center space-x-4 mb-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              hapticFeedback("light")
-              router.push("/")
-            }}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-xl font-bold">Giveaway</h1>
-            <p className="text-sm text-muted-foreground">Partecipa e vinci!</p>
-          </div>
+        {/* Header - no back button */}
+        <div className="mb-2">
+          <h1 className="text-xl font-bold">Giveaway</h1>
+          <p className="text-sm text-muted-foreground">Partecipa e vinci!</p>
         </div>
 
         {/* Onboarding Bonus Banner */}

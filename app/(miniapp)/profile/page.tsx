@@ -3,12 +3,11 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/miniapp/auth-context"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Trophy, BookOpen, Sparkles, TrendingUp } from "lucide-react"
+import { Trophy, BookOpen, Sparkles, TrendingUp } from "lucide-react"
 import { AnimatedBackground } from "@/components/miniapp/animated-background"
-import { useBackButton, hapticFeedback } from "@/lib/telegram/webapp-client"
+import { useBackButton } from "@/lib/telegram/webapp-client"
 import { motion } from "framer-motion"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useTelegramWebApp } from "@/lib/telegram/webapp-client"
@@ -133,23 +132,11 @@ export default function ProfilePage() {
     <div className="relative min-h-screen pb-20">
       <AnimatedBackground theme="fantasy" intensity="low" variant="menu" />
 
-      <div className="relative z-10 p-4">
-        {/* Header */}
-        <div className="mb-6 flex items-center space-x-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              hapticFeedback("light")
-              router.push("/")
-            }}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">Profile</h1>
-            <p className="text-sm text-muted-foreground">Your adventure stats</p>
-          </div>
+      <div className="relative z-10 p-2">
+        {/* Header - no back button, just title */}
+        <div className="mb-6">
+          <h1 className="text-xl font-bold">Profile</h1>
+          <p className="text-sm text-muted-foreground">Your adventure stats</p>
         </div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>

@@ -10,7 +10,7 @@ import { StoryProgress } from "@/components/miniapp/story-progress"
 import { RateLimitNotice } from "@/components/miniapp/rate-limit-notice"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { ArrowLeft, Home } from "lucide-react"
+import { Home } from "lucide-react"
 import { useBackButton, useHapticFeedback } from "@/lib/telegram/webapp-client"
 
 interface Choice {
@@ -250,7 +250,10 @@ export default function StoryPage() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div
+        className="fixed inset-0 flex items-center justify-center"
+        style={{ paddingTop: "calc(var(--total-safe-top, 0px) + 72px)" }}
+      >
         <AnimatedBackground theme={theme} intensity="low" variant="menu" />
         <div className="relative z-10 text-center">
           <div className="mb-4 inline-block h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -262,7 +265,10 @@ export default function StoryPage() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4">
+      <div
+        className="fixed inset-0 flex items-center justify-center p-4"
+        style={{ paddingTop: "calc(var(--total-safe-top, 0px) + 72px)" }}
+      >
         <AnimatedBackground theme={theme} intensity="low" variant="menu" />
         <Card className="relative z-10 max-w-md">
           <CardContent className="p-6 text-center">
@@ -270,7 +276,6 @@ export default function StoryPage() {
             <p className="mb-6 text-muted-foreground">{error}</p>
             <div className="flex gap-2">
               <Button onClick={() => router.push("/themes")} variant="outline" className="flex-1">
-                <ArrowLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
               <Button onClick={loadStory} className="flex-1">
@@ -290,12 +295,12 @@ export default function StoryPage() {
       const reset = new Date(rateLimitError.resetTime)
       const now = new Date()
       const diffMs = reset.getTime() - now.getTime()
-      
+
       if (diffMs <= 0) return "Pronto per giocare!"
-      
+
       const diffMinutes = Math.floor(diffMs / (1000 * 60))
       const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-      
+
       if (diffMinutes < 60) {
         return `Reset tra ${diffMinutes} minuti`
       } else if (diffHours < 24) {
@@ -306,13 +311,16 @@ export default function StoryPage() {
     }
 
     // Determina se è limite orario o giornaliero
-    const isHourlyLimit = rateLimitError.resetTime && 
-      (new Date(rateLimitError.resetTime).getTime() - Date.now()) < 60 * 60 * 1000
+    const isHourlyLimit =
+      rateLimitError.resetTime && new Date(rateLimitError.resetTime).getTime() - Date.now() < 60 * 60 * 1000
 
     return (
       <>
         <RateLimitNotice resetTime={rateLimitError.resetTime} onDismiss={() => router.push("/")} />
-        <div className="flex min-h-screen items-center justify-center p-4">
+        <div
+          className="fixed inset-0 flex items-center justify-center p-4"
+          style={{ paddingTop: "calc(var(--total-safe-top, 0px) + 72px)" }}
+        >
           <AnimatedBackground theme={theme} intensity="low" variant="menu" />
           <Card className="relative z-10 max-w-md">
             <CardContent className="p-6 text-center">
@@ -321,17 +329,14 @@ export default function StoryPage() {
                 {isHourlyLimit ? "Limite Orario Raggiunto" : "Limite Giornaliero Raggiunto"}
               </p>
               <p className="mb-4 text-sm text-muted-foreground">
-                {isHourlyLimit 
+                {isHourlyLimit
                   ? "Hai raggiunto il limite di 10 capitoli per questa ora."
-                  : "Hai raggiunto il limite di 50 capitoli per oggi."
-                }
+                  : "Hai raggiunto il limite di 50 capitoli per oggi."}
               </p>
               <div className="mb-6 p-3 rounded-lg bg-primary/10 border border-primary/20">
                 <p className="text-sm font-medium text-primary">🕐 {getResetTimeMessage()}</p>
               </div>
-              <p className="mb-6 text-sm text-muted-foreground">
-                Torna più tardi per continuare la tua avventura!
-              </p>
+              <p className="mb-6 text-sm text-muted-foreground">Torna più tardi per continuare la tua avventura!</p>
               <Button onClick={() => router.push("/")} className="w-full">
                 <Home className="mr-2 h-4 w-4" />
                 Torna alla Home
@@ -345,7 +350,10 @@ export default function StoryPage() {
 
   if (isCompleted) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4">
+      <div
+        className="fixed inset-0 flex items-center justify-center p-4"
+        style={{ paddingTop: "calc(var(--total-safe-top, 0px) + 72px)" }}
+      >
         <AnimatedBackground theme={theme} intensity="high" variant="scene" />
         <Card className="relative z-10 max-w-2xl">
           <CardContent className="p-8 text-center">
@@ -355,8 +363,8 @@ export default function StoryPage() {
               <p className="text-muted-foreground">You earned {sessionPP} PP this chapter</p>
             </div>
             <div className="mb-6 rounded-lg bg-muted/50 p-6">
-              <div 
-                className="whitespace-pre-wrap text-lg leading-relaxed" 
+              <div
+                className="whitespace-pre-wrap text-lg leading-relaxed"
                 dangerouslySetInnerHTML={{ __html: finaleText }}
               />
             </div>
@@ -386,12 +394,12 @@ export default function StoryPage() {
   }
 
   return (
-    <div className="fixed inset-0 overflow-hidden">
+    <div className="fixed inset-0 overflow-hidden" style={{ paddingTop: "calc(var(--total-safe-top, 0px) + 72px)" }}>
       <AnimatedBackground theme={theme} intensity="medium" variant="scene" />
 
       <div className="relative z-10 h-full flex flex-col">
         {/* Progress Bar */}
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 px-4">
           <StoryProgress
             currentScene={currentScene.index}
             totalScenes={8}
@@ -404,9 +412,9 @@ export default function StoryPage() {
         </div>
 
         {/* Story Content */}
-        <div className="flex-1 flex flex-col justify-center items-center px-4 py-6 min-h-0 overflow-y-auto">
+        <div className="flex-1 flex flex-col justify-center items-center px-4 py-4 min-h-0 overflow-y-auto">
           {/* Scene card - centered and properly sized */}
-          <div className="w-full max-w-2xl mb-6">
+          <div className="w-full max-w-2xl mb-4">
             <StoryScene
               theme={theme}
               sceneText={currentScene.text}
