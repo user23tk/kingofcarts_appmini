@@ -3,7 +3,7 @@
 // Client-side Telegram WebApp utilities
 // This file should only be imported in client components
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 
 export interface WebAppUser {
   id: number
@@ -23,6 +23,22 @@ export interface WebAppThemeParams {
   button_color?: string
   button_text_color?: string
   secondary_bg_color?: string
+}
+
+export interface SafeAreaInset {
+  top: number
+  bottom: number
+  left: number
+  right: number
+}
+
+export interface ViewportState {
+  isFullscreen: boolean
+  safeAreaInset: SafeAreaInset
+  contentSafeAreaInset: SafeAreaInset
+  viewportHeight: number
+  viewportStableHeight: number
+  isExpanded: boolean
 }
 
 /**
@@ -66,6 +82,131 @@ export function useTelegramWebApp() {
     isReady,
     isInTelegram: !!webApp,
   }
+}
+
+/**
+ * Hook to manage fullscreen mode and safe area insets
+ * Requires Telegram Bot API 8.0+
+ */
+export function useFullscreen() {
+  const [viewportState, setViewportState] = useState<ViewportState>({
+    isFullscreen: false,
+    safeAreaInset: { top: 0, bottom: 0, left: 0, right: 0 },
+    contentSafeAreaInset: { top: 0, bottom: 0, left: 0, right: 0 },
+    viewportHeight: 0,
+    viewportStableHeight: 0,
+    isExpanded: false,
+  })
+
+  const updateViewportState = useCallback(() => {
+    if (typeof window !== "undefined" && (window as any).Telegram?.WebApp) {
+      const tg = (window as any).Telegram.WebApp
+
+      setViewportState({
+        isFullscreen: tg.isFullscreen || false,
+        safeAreaInset: tg.safeAreaInset || { top: 0, bottom: 0, left: 0, right: 0 },
+        contentSafeAreaInset: tg.contentSafeAreaInset || { top: 0, bottom: 0, left: 0, right: 0 },
+        viewportHeight: tg.viewportHeight || window.innerHeight,
+        viewportStableHeight: tg.viewportStableHeight || window.innerHeight,
+        isExpanded: tg.isExpanded || false,
+      })
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && (window as any).Telegram?.WebApp) {
+      const tg = (window as any).Telegram.WebApp
+
+      // Initial state
+      updateViewportState()
+
+      // Listen for viewport changes
+      tg.onEvent("viewportChanged", updateViewportState)
+      tg.onEvent("fullscreenChanged", updateViewportState)
+      tg.onEvent("safeAreaChanged", updateViewportState)
+      tg.onEvent("contentSafeAreaChanged", updateViewportState)
+
+      return () => {
+        tg.offEvent("viewportChanged", updateViewportState)
+        tg.offEvent("fullscreenChanged", updateViewportState)
+        tg.offEvent("safeAreaChanged", updateViewportState)
+        tg.offEvent("contentSafeAreaChanged", updateViewportState)
+      }
+    }
+  }, [updateViewportState])
+
+  const requestFullscreen = useCallback(() => {
+    if (typeof window !== "undefined" && (window as any).Telegram?.WebApp) {
+      const tg = (window as any).Telegram.WebApp
+      // Check if method exists (Bot API 8.0+)
+      if (typeof tg.requestFullscreen === "function") {
+        tg.requestFullscreen()
+        console.log("[v0] Requested fullscreen mode")
+      } else {
+        // Fallback to expand for older versions
+        tg.expand()
+        console.log("[v0] Fullscreen not available, using expand fallback")
+      }
+    }
+  }, [])
+
+  const exitFullscreen = useCallback(() => {
+    if (typeof window !== "undefined" && (window as any).Telegram?.WebApp) {
+      const tg = (window as any).Telegram.WebApp
+      if (typeof tg.exitFullscreen === "function") {
+        tg.exitFullscreen()
+        console.log("[v0] Exited fullscreen mode")
+      }
+    }
+  }, [])
+
+  const toggleFullscreen = useCallback(() => {
+    if (viewportState.isFullscreen) {
+      exitFullscreen()
+    } else {
+      requestFullscreen()
+    }
+  }, [viewportState.isFullscreen, requestFullscreen, exitFullscreen])
+
+  return {
+    ...viewportState,
+    requestFullscreen,
+    exitFullscreen,
+    toggleFullscreen,
+  }
+}
+
+/**
+ * Hook to apply safe area insets as CSS variables
+ * Use with CSS: padding-top: var(--safe-area-top, 0px);
+ */
+export function useSafeAreaCSS() {
+  const { safeAreaInset, contentSafeAreaInset, isFullscreen } = useFullscreen()
+
+  useEffect(() => {
+    const root = document.documentElement
+
+    // Device safe area (notch, dynamic island, etc.)
+    root.style.setProperty("--safe-area-top", `${safeAreaInset.top}px`)
+    root.style.setProperty("--safe-area-bottom", `${safeAreaInset.bottom}px`)
+    root.style.setProperty("--safe-area-left", `${safeAreaInset.left}px`)
+    root.style.setProperty("--safe-area-right", `${safeAreaInset.right}px`)
+
+    // Content safe area (Telegram header/footer when not fullscreen)
+    root.style.setProperty("--content-safe-area-top", `${contentSafeAreaInset.top}px`)
+    root.style.setProperty("--content-safe-area-bottom", `${contentSafeAreaInset.bottom}px`)
+    root.style.setProperty("--content-safe-area-left", `${contentSafeAreaInset.left}px`)
+    root.style.setProperty("--content-safe-area-right", `${contentSafeAreaInset.right}px`)
+
+    // Combined safe area (max of both for total safe padding needed)
+    root.style.setProperty("--total-safe-top", `${Math.max(safeAreaInset.top, contentSafeAreaInset.top)}px`)
+    root.style.setProperty("--total-safe-bottom", `${Math.max(safeAreaInset.bottom, contentSafeAreaInset.bottom)}px`)
+
+    // Fullscreen state
+    root.style.setProperty("--is-fullscreen", isFullscreen ? "1" : "0")
+
+    console.log("[v0] Safe area CSS updated", { safeAreaInset, contentSafeAreaInset, isFullscreen })
+  }, [safeAreaInset, contentSafeAreaInset, isFullscreen])
 }
 
 /**

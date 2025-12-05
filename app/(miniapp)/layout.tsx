@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useEffect } from "react"
 import { AuthProvider } from "@/lib/miniapp/auth-context"
-import { useTelegramTheme } from "@/lib/telegram/webapp-client"
+import { useTelegramTheme, useFullscreen, useSafeAreaCSS } from "@/lib/telegram/webapp-client"
 import { BottomNav } from "@/components/miniapp/bottom-nav"
 import { usePathname } from "next/navigation"
 import Script from "next/script"
@@ -16,6 +16,9 @@ export default function MiniAppLayout({
 }) {
   const { theme, colorScheme } = useTelegramTheme()
   const pathname = usePathname()
+
+  const { requestFullscreen, isFullscreen, viewportHeight } = useFullscreen()
+  useSafeAreaCSS() // Apply safe area CSS variables
 
   useEffect(() => {
     // Apply Telegram theme colors to CSS variables
@@ -41,11 +44,23 @@ export default function MiniAppLayout({
   }, [theme, colorScheme])
 
   useEffect(() => {
-    // Expand to fullscreen and lock viewport
     if (typeof window !== "undefined" && (window as any).Telegram?.WebApp) {
       const tg = (window as any).Telegram.WebApp
+
+      // First expand to fill available space
       tg.expand()
       tg.disableVerticalSwipes()
+
+      // Then request true fullscreen if available (Bot API 8.0+)
+      // Small delay to ensure expand completes first
+      const timer = setTimeout(() => {
+        if (typeof tg.requestFullscreen === "function") {
+          tg.requestFullscreen()
+          console.log("[v0] Requested true fullscreen mode")
+        }
+      }, 100)
+
+      return () => clearTimeout(timer)
     }
   }, [])
 
@@ -53,7 +68,16 @@ export default function MiniAppLayout({
     <>
       <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
       <AuthProvider>
-        <div className="fixed inset-0 bg-background overflow-hidden">
+        <div
+          className="fixed inset-0 bg-background overflow-hidden"
+          style={{
+            // Use CSS variables for safe area, with fallbacks
+            paddingTop: "var(--total-safe-top, 0px)",
+            paddingBottom: "var(--safe-area-bottom, 0px)",
+            paddingLeft: "var(--safe-area-left, 0px)",
+            paddingRight: "var(--safe-area-right, 0px)",
+          }}
+        >
           <div className="h-full mx-auto max-w-2xl flex flex-col">
             <div className="flex-1 overflow-y-auto pb-20">{children}</div>
             <BottomNav currentPath={pathname} />
