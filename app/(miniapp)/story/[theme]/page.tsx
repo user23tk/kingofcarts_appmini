@@ -252,7 +252,7 @@ export default function StoryPage() {
     return (
       <div
         className="fixed inset-0 flex items-center justify-center"
-        style={{ paddingTop: "calc(var(--total-safe-top, 0px) + 84px)" }}
+        style={{ paddingTop: "calc(var(--total-safe-top, 0px) + 92px)" }}
       >
         <AnimatedBackground theme={theme} intensity="low" variant="menu" />
         <div className="relative z-10 text-center">
@@ -267,7 +267,7 @@ export default function StoryPage() {
     return (
       <div
         className="fixed inset-0 flex items-center justify-center p-4"
-        style={{ paddingTop: "calc(var(--total-safe-top, 0px) + 84px)" }}
+        style={{ paddingTop: "calc(var(--total-safe-top, 0px) + 92px)" }}
       >
         <AnimatedBackground theme={theme} intensity="low" variant="menu" />
         <Card className="relative z-10 max-w-md">
@@ -319,7 +319,7 @@ export default function StoryPage() {
         <RateLimitNotice resetTime={rateLimitError.resetTime} onDismiss={() => router.push("/")} />
         <div
           className="fixed inset-0 flex items-center justify-center p-4"
-          style={{ paddingTop: "calc(var(--total-safe-top, 0px) + 84px)" }}
+          style={{ paddingTop: "calc(var(--total-safe-top, 0px) + 92px)" }}
         >
           <AnimatedBackground theme={theme} intensity="low" variant="menu" />
           <Card className="relative z-10 max-w-md">
@@ -352,7 +352,7 @@ export default function StoryPage() {
     return (
       <div
         className="fixed inset-0 flex items-center justify-center p-4"
-        style={{ paddingTop: "calc(var(--total-safe-top, 0px) + 84px)" }}
+        style={{ paddingTop: "calc(var(--total-safe-top, 0px) + 92px)" }}
       >
         <AnimatedBackground theme={theme} intensity="high" variant="scene" />
         <Card className="relative z-10 max-w-2xl">
@@ -394,7 +394,7 @@ export default function StoryPage() {
   }
 
   return (
-    <div className="fixed inset-0 overflow-hidden" style={{ paddingTop: "calc(var(--total-safe-top, 0px) + 84px)" }}>
+    <div className="fixed inset-0 overflow-hidden" style={{ paddingTop: "calc(var(--total-safe-top, 0px) + 92px)" }}>
       <AnimatedBackground theme={theme} intensity="medium" variant="scene" />
 
       <div className="relative z-10 h-full flex flex-col">
