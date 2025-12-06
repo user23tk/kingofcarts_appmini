@@ -7,7 +7,24 @@ export const maxDuration = 5
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
 const BOT_NAME = process.env.BOT_DISPLAY_NAME || "King of Carts"
 const BOT_USERNAME = process.env.BOT_USERNAME || "kingofcarts_betabot"
-const MINIAPP_URL = process.env.MINIAPP_URL || `https://t.me/${BOT_USERNAME}/app`
+
+function ensureHttpsUrl(url: string | undefined, fallback: string): string {
+  if (!url) return fallback
+
+  // Se l'URL inizia con //, aggiungi https:
+  if (url.startsWith("//")) {
+    return `https:${url}`
+  }
+
+  // Se l'URL non ha protocollo, aggiungi https://
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    return `https://${url}`
+  }
+
+  return url
+}
+
+const MINIAPP_URL = ensureHttpsUrl(process.env.MINIAPP_URL, `https://t.me/${BOT_USERNAME}/app`)
 
 // Interfaccia per inline query
 interface InlineQuery {
