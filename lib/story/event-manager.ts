@@ -70,7 +70,7 @@ export class EventManager {
   private static async getActiveEventFallback(supabase: ReturnType<typeof createAdminClient>): Promise<ActiveEvent | null> {
     const { data, error } = await supabase
       .from("themes")
-      .select("name, title, description, event_start_date, event_end_date, pp_multiplier, is_event, is_active")
+      .select("name, title, description, event_start_date, event_end_date, pp_multiplier, is_event, is_active, event_emoji, emoji")
       .eq("is_event", true)
       .eq("is_active", true)
       .order("event_start_date", { ascending: false })
@@ -96,6 +96,8 @@ export class EventManager {
       pp_multiplier: theme.pp_multiplier || 1.0,
       is_active: true,
       is_event: true,
+      event_emoji: theme.event_emoji || theme.emoji,
+      emoji: theme.emoji || theme.event_emoji,
     }
   }
 

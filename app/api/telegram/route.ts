@@ -1,52 +1,147 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { TelegramBot } from "@/lib/telegram/bot"
 import type { TelegramUpdate } from "@/lib/telegram/types"
-import { StoryManager } from "@/lib/story/story-manager"
-import { SessionManager } from "@/lib/story/session-manager"
-import { AntiReplayManager } from "@/lib/security/anti-replay"
-import { handleStartCommand } from "@/lib/commands/start-command"
-import { createClient } from "@/lib/supabase/server"
 
 export const dynamic = "force-dynamic"
 
-const bot = new TelegramBot()
-const storyManager = new StoryManager()
-const sessionManager = new SessionManager()
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
+const BOT_NAME = process.env.BOT_DISPLAY_NAME || "King of Carts"
+const BOT_USERNAME = process.env.BOT_USERNAME || "kingofcarts_betabot"
+const MINIAPP_URL = process.env.MINIAPP_URL || `https://t.me/${BOT_USERNAME}/app`
+// Cache time basso per risultati più reattivi (0 = no cache)
+const INLINE_CACHE_TIME = 0
+
+let bot: any = null
+let antiReplayManager: any = null
+
+async function getBot() {
+  if (!bot) {
+    const { TelegramBot } = await import("@/lib/telegram/bot")
+    bot = new TelegramBot()
+  }
+  return bot
+}
+
+async function getAntiReplayManager() {
+  if (!antiReplayManager) {
+    const { AntiReplayManager } = await import("@/lib/security/anti-replay")
+    antiReplayManager = AntiReplayManager
+  }
+  return antiReplayManager
+}
+
+async function answerInlineQueryDirect(inlineQueryId: string, results: any[], options: any) {
+  const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerInlineQuery`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      inline_query_id: inlineQueryId,
+      results,
+      cache_time: options.cache_time || 300,
+      is_personal: options.is_personal || false,
+    }),
+  })
+  return response.json()
+}
 
 export async function POST(request: NextRequest) {
   try {
     const secretToken = request.headers.get("x-telegram-bot-api-secret-token")
     const expectedToken = process.env.TELEGRAM_WEBHOOK_SECRET
-    const userAgent = request.headers.get("user-agent")
-    const contentType = request.headers.get("content-type")
-
-    console.log("[v0] Webhook received, secret token:", secretToken ? "present" : "missing")
-    console.log("[v0] Expected token:", expectedToken ? "configured" : "missing")
 
     if (!expectedToken || secretToken !== expectedToken) {
-      console.log("[v0] Unauthorized webhook request from:", request.ip)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    if (!contentType?.includes("application/json")) {
-      console.log("[v0] Invalid content type:", contentType)
-      return NextResponse.json({ error: "Invalid content type" }, { status: 400 })
-    }
-
     const update: TelegramUpdate = await request.json()
-    console.log("[v0] Received Telegram update:", update.update_id)
 
     if (!update.update_id || typeof update.update_id !== "number") {
-      console.log("[v0] Invalid update format")
       return NextResponse.json({ error: "Invalid update format" }, { status: 400 })
     }
+
+    if (update.inline_query) {
+      const inlineQuery = update.inline_query
+      const userId = inlineQuery.from.id.toString()
+      const playerName = inlineQuery.from.first_name || "Viaggiatore"
+      const query = (inlineQuery.query || "").toLowerCase().trim()
+      const inviteUrl = `https://t.me/${BOT_USERNAME}?start=invite_${userId}`
+
+      // Risultati diversi in base alla query
+      const results: any[] = []
+
+      // Risultato principale - sempre visibile
+      results.push({
+        type: "article",
+        id: "play_now",
+        title: `🎮 Gioca a ${BOT_NAME}`,
+        description: "Avventure interattive con storie infinite!",
+        thumb_url: "https://v0-beta-3-mini-app.vercel.app/og-image.png",
+        input_message_content: {
+          message_text: `🎮 <b>${BOT_NAME}</b>\n\n${playerName} ti sfida!\n\n🎭 Storie interattive generate dall'AI\n🏆 Classifica globale\n🎄 Evento Natale attivo!\n\n✨ Gioca ora!`,
+          parse_mode: "HTML",
+        },
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "🎮 Gioca Ora", url: MINIAPP_URL }],
+          ],
+        },
+      })
+
+      // Invito amici
+      if (!query || query.includes("invit") || query.includes("amici") || query.includes("friend")) {
+        results.push({
+          type: "article",
+          id: "invite_friends",
+          title: `👥 Invita Amici`,
+          description: "Condividi il gioco con i tuoi amici!",
+          thumb_url: "https://v0-beta-3-mini-app.vercel.app/og-image.png",
+          input_message_content: {
+            message_text: `👥 <b>Unisciti a ${BOT_NAME}!</b>\n\n${playerName} ti invita a giocare!\n\n🌈 7 temi diversi da esplorare\n📖 Storie infinite\n🏆 Sfida i tuoi amici in classifica\n\n🎁 Inizia subito!`,
+            parse_mode: "HTML",
+          },
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "🎭 Inizia Avventura", url: inviteUrl }],
+            ],
+          },
+        })
+      }
+
+      // Evento Natale
+      if (!query || query.includes("natal") || query.includes("christmas") || query.includes("event")) {
+        results.push({
+          type: "article",
+          id: "natale_event",
+          title: `🎄 Evento Natale 2025`,
+          description: "Contest speciale con 2x PP!",
+          thumb_url: "https://v0-beta-3-mini-app.vercel.app/og-image.png",
+          input_message_content: {
+            message_text: `🎄 <b>Evento Natale 2025</b>\n\n${playerName} partecipa al contest natalizio!\n\n🎁 Punti raddoppiati (2x PP)\n🏆 Classifica dedicata\n⏰ Fino al 6 Gennaio 2026\n\n✨ Unisciti ora!`,
+            parse_mode: "HTML",
+          },
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "🎄 Gioca Evento Natale", url: `${MINIAPP_URL}?startapp=natale` }],
+            ],
+          },
+        })
+      }
+
+      // Rispondi immediatamente - fire and forget
+      answerInlineQueryDirect(inlineQuery.id, results, {
+        cache_time: INLINE_CACHE_TIME,
+        is_personal: true,
+      }).catch((err) => console.error("[Inline] Error:", err))
+
+      return NextResponse.json({ ok: true })
+    }
+
+    // Regular path - load heavy modules only when needed
+    console.log("[v0] Received Telegram update:", update.update_id)
 
     if (update.message) {
       await handleMessageWithRecovery(update.message)
     } else if (update.callback_query) {
       await handleCallbackQueryWithRecovery(update.callback_query)
-    } else if (update.inline_query) {
-      await handleInlineQueryWithRecovery(update.inline_query)
     }
 
     return NextResponse.json({ ok: true })
@@ -56,28 +151,16 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handleInlineQueryWithRecovery(inlineQuery: any) {
-  try {
-    await handleInlineQuery(inlineQuery)
-  } catch (error) {
-    console.error("[v0] Inline query handling error:", error)
-    try {
-      await bot.answerInlineQuery(inlineQuery.id, [])
-    } catch (answerError) {
-      console.error("[v0] Failed to answer inline query:", answerError)
-    }
-  }
-}
-
 async function handleMessageWithRecovery(message: any) {
+  const botInstance = await getBot()
   try {
-    await handleMessage(message)
+    await handleMessage(message, botInstance)
   } catch (error) {
     console.error("[v0] Message handling error:", error)
     const chatId = message.chat?.id
     if (chatId) {
       try {
-        await bot.sendMessage(chatId, "❌ Si è verificato un errore. Riprova con /start")
+        await botInstance.sendMessage(chatId, "❌ Si è verificato un errore. Riprova con /start")
       } catch (sendError) {
         console.error("[v0] Failed to send error message:", sendError)
       }
@@ -86,26 +169,28 @@ async function handleMessageWithRecovery(message: any) {
 }
 
 async function handleCallbackQueryWithRecovery(callbackQuery: any) {
+  const botInstance = await getBot()
+  const AntiReplay = await getAntiReplayManager()
   try {
-    await handleCallbackQuery(callbackQuery)
+    await handleCallbackQuery(callbackQuery, botInstance, AntiReplay)
   } catch (error) {
     console.error("[v0] Callback handling error:", error)
     try {
-      await bot.answerCallbackQuery(callbackQuery.id, "❌ Errore. Riprova con /start")
+      await botInstance.answerCallbackQuery(callbackQuery.id, "❌ Errore. Riprova con /start")
     } catch (answerError) {
       console.error("[v0] Failed to answer callback query:", answerError)
     }
   }
 }
 
-async function handleMessage(message: any) {
+async function handleMessage(message: any, botInstance: any) {
   if (!message.from || message.from.is_bot) {
     return
   }
 
   console.log("[v0] Processing message from user:", message.from.id)
 
-  const user = await bot.getOrCreateUser(message.from)
+  const user = await botInstance.getOrCreateUser(message.from)
   if (!user) {
     console.error("[v0] Failed to get/create user")
     return
@@ -114,28 +199,29 @@ async function handleMessage(message: any) {
   const text = message.text?.toLowerCase() || ""
 
   if (text.startsWith("/start")) {
+    const { handleStartCommand } = await import("@/lib/commands/start-command")
     await handleStartCommand(message.chat.id, user)
   } else if (text.startsWith("/help")) {
-    await handleHelpCommand(message.chat.id)
+    await handleHelpCommand(message.chat.id, botInstance)
   } else if (text.startsWith("/stats")) {
-    await handleStatsCommandRedirect(message.chat.id, user)
+    await handleStatsCommandRedirect(message.chat.id, botInstance)
   } else if (text.startsWith("/continue")) {
-    await handleContinueCommandRedirect(message.chat.id, user)
+    await handleContinueCommandRedirect(message.chat.id, botInstance)
   } else if (text.startsWith("/reset")) {
-    await handleResetCommandRedirect(message.chat.id, user)
+    await handleResetCommandRedirect(message.chat.id, botInstance)
   } else if (text.startsWith("/leaderboard")) {
-    await handleLeaderboardCommandRedirect(message.chat.id, user)
+    await handleLeaderboardCommandRedirect(message.chat.id, botInstance)
   } else if (text.startsWith("/event")) {
-    await handleEventCommandRedirect(message.chat.id, user)
+    await handleEventCommandRedirect(message.chat.id, botInstance)
   } else {
-    await bot.sendMessage(
+    await botInstance.sendMessage(
       message.chat.id,
       "🤔 Usa /start per aprire la Mini App e giocare!\n\nComandi disponibili:\n/start - Apri il gioco\n/help - Aiuto",
     )
   }
 }
 
-async function handleHelpCommand(chatId: number) {
+async function handleHelpCommand(chatId: number, botInstance: any) {
   const helpMessage = `📖 <b>Aiuto King of Carts</b>
 
 <b>Comandi disponibili:</b>
@@ -150,23 +236,23 @@ async function handleHelpCommand(chatId: number) {
 5. Scala la classifica globale!
 
 <b>Modalità Inline:</b>
-Scrivi @${process.env.BOT_USERNAME || "kingofcarts_betabot"} in qualsiasi chat per condividere il gioco con i tuoi amici!`
+Scrivi @${BOT_USERNAME} in qualsiasi chat per condividere il gioco con i tuoi amici!`
 
   const keyboard = {
     inline_keyboard: [
       [
         {
           text: "🎄 Apri Mini App",
-          web_app: { url: process.env.APP_DOMAIN || "https://v0-beta-3-mini-app.vercel.app" },
+          web_app: { url: MINIAPP_URL },
         },
       ],
     ],
   }
 
-  await bot.sendMessage(chatId, helpMessage, keyboard)
+  await botInstance.sendMessage(chatId, helpMessage, keyboard)
 }
 
-async function handleStatsCommandRedirect(chatId: number, user: any) {
+async function handleStatsCommandRedirect(chatId: number, botInstance: any) {
   const message = `📊 <b>Le tue statistiche</b>
 
 Per visualizzare le tue statistiche dettagliate, apri la Mini App!`
@@ -176,16 +262,16 @@ Per visualizzare le tue statistiche dettagliate, apri la Mini App!`
       [
         {
           text: "📊 Vedi Statistiche",
-          web_app: { url: `${process.env.APP_DOMAIN || "https://v0-beta-3-mini-app.vercel.app"}?view=stats` },
+          web_app: { url: `${MINIAPP_URL}?view=stats` },
         },
       ],
     ],
   }
 
-  await bot.sendMessage(chatId, message, keyboard)
+  await botInstance.sendMessage(chatId, message, keyboard)
 }
 
-async function handleContinueCommandRedirect(chatId: number, user: any) {
+async function handleContinueCommandRedirect(chatId: number, botInstance: any) {
   const message = `▶️ <b>Continua la tua avventura</b>
 
 Apri la Mini App per continuare dal punto in cui ti sei fermato!`
@@ -195,16 +281,16 @@ Apri la Mini App per continuare dal punto in cui ti sei fermato!`
       [
         {
           text: "▶️ Continua Avventura",
-          web_app: { url: process.env.APP_DOMAIN || "https://v0-beta-3-mini-app.vercel.app" },
+          web_app: { url: MINIAPP_URL },
         },
       ],
     ],
   }
 
-  await bot.sendMessage(chatId, message, keyboard)
+  await botInstance.sendMessage(chatId, message, keyboard)
 }
 
-async function handleResetCommandRedirect(chatId: number, user: any) {
+async function handleResetCommandRedirect(chatId: number, botInstance: any) {
   const message = `🔄 <b>Ricomincia tema</b>
 
 Apri la Mini App per ricominciare un tema dall'inizio!`
@@ -214,16 +300,16 @@ Apri la Mini App per ricominciare un tema dall'inizio!`
       [
         {
           text: "🔄 Gestisci Temi",
-          web_app: { url: process.env.APP_DOMAIN || "https://v0-beta-3-mini-app.vercel.app" },
+          web_app: { url: MINIAPP_URL },
         },
       ],
     ],
   }
 
-  await bot.sendMessage(chatId, message, keyboard)
+  await botInstance.sendMessage(chatId, message, keyboard)
 }
 
-async function handleLeaderboardCommandRedirect(chatId: number, user: any) {
+async function handleLeaderboardCommandRedirect(chatId: number, botInstance: any) {
   const message = `🏆 <b>Classifica Globale</b>
 
 Apri la Mini App per vedere la classifica completa e il tuo posizionamento!`
@@ -234,23 +320,24 @@ Apri la Mini App per vedere la classifica completa e il tuo posizionamento!`
         {
           text: "🏆 Vedi Classifica",
           web_app: {
-            url: `${process.env.APP_DOMAIN || "https://v0-beta-3-mini-app.vercel.app"}?view=leaderboard`,
+            url: `${MINIAPP_URL}?view=leaderboard`,
           },
         },
       ],
     ],
   }
 
-  await bot.sendMessage(chatId, message, keyboard)
+  await botInstance.sendMessage(chatId, message, keyboard)
 }
 
-async function handleEventCommandRedirect(chatId: number, user: any) {
+async function handleEventCommandRedirect(chatId: number, botInstance: any) {
+  const { createClient } = await import("@/lib/supabase/server")
   const supabase = await createClient()
   const { data: activeEventData } = await supabase.rpc("get_active_event")
   const activeEvent = activeEventData && activeEventData.length > 0 ? activeEventData[0] : null
 
   if (!activeEvent) {
-    await bot.sendMessage(chatId, "❌ Nessun evento attivo al momento. Controlla più tardi!")
+    await botInstance.sendMessage(chatId, "❌ Nessun evento attivo al momento. Controlla più tardi!")
     return
   }
 
@@ -265,91 +352,30 @@ Apri la Mini App per partecipare all'evento!`
       [
         {
           text: `${activeEvent.event_emoji || "🎉"} Partecipa all'Evento`,
-          url: `${process.env.APP_DOMAIN || "https://v0-beta-3-mini-app.vercel.app"}?event=${activeEvent.name}`,
+          url: `${MINIAPP_URL}?event=${activeEvent.name}`,
         },
       ],
     ],
   }
 
-  await bot.sendMessage(chatId, message, keyboard)
+  await botInstance.sendMessage(chatId, message, keyboard)
 }
 
-async function handleCallbackQuery(callbackQuery: any) {
+async function handleCallbackQuery(callbackQuery: any, botInstance: any, AntiReplay: any) {
   console.log("[v0] Processing callback query:", callbackQuery.data)
 
-  if (AntiReplayManager.isCallbackProcessed(callbackQuery.id)) {
-    await bot.answerCallbackQuery(callbackQuery.id, "Azione già processata!")
+  if (AntiReplay.isCallbackProcessed(callbackQuery.id)) {
+    await botInstance.answerCallbackQuery(callbackQuery.id, "Azione già processata!")
     return
   }
 
-  AntiReplayManager.markCallbackProcessed(callbackQuery.id)
+  AntiReplay.markCallbackProcessed(callbackQuery.id)
 
-  const user = await bot.getOrCreateUser(callbackQuery.from)
+  const user = await botInstance.getOrCreateUser(callbackQuery.from)
   if (!user) {
-    await bot.answerCallbackQuery(callbackQuery.id, "Error: User not found")
+    await botInstance.answerCallbackQuery(callbackQuery.id, "Error: User not found")
     return
   }
 
-  await bot.answerCallbackQuery(callbackQuery.id, "Apri la Mini App per giocare!")
-}
-
-async function handleInlineQuery(inlineQuery: any) {
-  console.log("[v0] Processing inline query:", inlineQuery.id, "Query:", inlineQuery.query)
-  console.log("[v0] Inline query from user:", inlineQuery.from.id, inlineQuery.from.first_name)
-
-  try {
-    const query = inlineQuery.query?.toLowerCase() || ""
-    const userId = inlineQuery.from.id.toString()
-
-    const playerName = inlineQuery.from.first_name || "Viaggiatore"
-    const botName = process.env.BOT_DISPLAY_NAME || "King of Carts"
-    const botUsername = process.env.BOT_USERNAME || "kingofcarts_betabot"
-
-    const miniAppUrl = process.env.MINIAPP_URL || `https://t.me/${botUsername}/app`
-
-    console.log("[v0] Bot configuration - Display Name:", botName)
-    console.log("[v0] Bot configuration - Username:", botUsername)
-    console.log("[v0] Mini App URL:", miniAppUrl)
-
-    const results = []
-    const inviteUrl = `https://t.me/${botUsername}?start=invite_${userId}`
-
-    results.push({
-      type: "article",
-      id: "invite_general",
-      title: `🎭 Invita Amici a ${botName}`,
-      description: "Condividi il gioco di storytelling interattivo!",
-      thumbnail_url: "https://v0-beta-3-mini-app.vercel.app/og-image.png",
-      input_message_content: {
-        message_text: `🎭 <b>${botName}</b>\n\n${playerName} ti invita a giocare!\n\n🌈 Un gioco di storytelling interattivo con 7 temi diversi\n📖 Storie infinite generate dall'AI\n🏆 Classifica globale e sfide\n\n✨ Inizia la tua avventura ora!`,
-        parse_mode: "HTML",
-      },
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "🎭 Inizia Avventura", url: inviteUrl }],
-          [{ text: "🎄 Apri Mini App", url: miniAppUrl }],
-        ],
-      },
-    })
-
-    console.log("[v0] Created 1 inline query result (invite only)")
-    console.log("[v0] Sending answer to inline query...")
-
-    const cacheTime = Number.parseInt(process.env.INLINE_CACHE_TIME || "10")
-
-    await bot.answerInlineQuery(inlineQuery.id, results, {
-      cache_time: cacheTime,
-      is_personal: true,
-    })
-
-    console.log("[v0] Successfully answered inline query")
-  } catch (error) {
-    console.error("[v0] Error in handleInlineQuery:", error)
-    try {
-      await bot.answerInlineQuery(inlineQuery.id, [])
-      console.log("[v0] Sent empty results due to error")
-    } catch (answerError) {
-      console.error("[v0] Failed to send empty results:", answerError)
-    }
-  }
+  await botInstance.answerCallbackQuery(callbackQuery.id, "Apri la Mini App per giocare!")
 }
