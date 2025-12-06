@@ -59,36 +59,32 @@ export async function POST(request: NextRequest) {
     }
 
     if (update.inline_query) {
+      const startTime = Date.now()
       const inlineQuery = update.inline_query
       const userId = inlineQuery.from.id.toString()
       const playerName = inlineQuery.from.first_name || "Viaggiatore"
-      const query = (inlineQuery.query || "").toLowerCase().trim()
+
+      console.log(`[v0] Inline query from ${userId} - query: "${inlineQuery.query}"`)
+
       const inviteUrl = `https://t.me/${BOT_USERNAME}?start=invite_${userId}`
 
-      // Risultati diversi in base alla query
-      const results: any[] = []
-
-      // Risultato principale - sempre visibile
-      results.push({
-        type: "article",
-        id: "play_now",
-        title: `🎮 Gioca a ${BOT_NAME}`,
-        description: "Avventure interattive con storie infinite!",
-        thumb_url: "https://v0-beta-3-mini-app.vercel.app/og-image.png",
-        input_message_content: {
-          message_text: `🎮 <b>${BOT_NAME}</b>\n\n${playerName} ti sfida!\n\n🎭 Storie interattive generate dall'AI\n🏆 Classifica globale\n🎄 Evento Natale attivo!\n\n✨ Gioca ora!`,
-          parse_mode: "HTML",
+      // Risultati fissi - sempre gli stessi per massima velocità
+      const results = [
+        {
+          type: "article",
+          id: "play_now",
+          title: `🎮 Gioca a ${BOT_NAME}`,
+          description: "Avventure interattive con storie infinite!",
+          thumb_url: "https://v0-beta-3-mini-app.vercel.app/og-image.png",
+          input_message_content: {
+            message_text: `🎮 <b>${BOT_NAME}</b>\n\n${playerName} ti sfida!\n\n🎭 Storie interattive generate dall'AI\n🏆 Classifica globale\n🎄 Evento Natale attivo!\n\n✨ Gioca ora!`,
+            parse_mode: "HTML",
+          },
+          reply_markup: {
+            inline_keyboard: [[{ text: "🎮 Gioca Ora", url: MINIAPP_URL }]],
+          },
         },
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: "🎮 Gioca Ora", url: MINIAPP_URL }],
-          ],
-        },
-      })
-
-      // Invito amici
-      if (!query || query.includes("invit") || query.includes("amici") || query.includes("friend")) {
-        results.push({
+        {
           type: "article",
           id: "invite_friends",
           title: `👥 Invita Amici`,
@@ -99,16 +95,10 @@ export async function POST(request: NextRequest) {
             parse_mode: "HTML",
           },
           reply_markup: {
-            inline_keyboard: [
-              [{ text: "🎭 Inizia Avventura", url: inviteUrl }],
-            ],
+            inline_keyboard: [[{ text: "🎭 Inizia Avventura", url: inviteUrl }]],
           },
-        })
-      }
-
-      // Evento Natale
-      if (!query || query.includes("natal") || query.includes("christmas") || query.includes("event")) {
-        results.push({
+        },
+        {
           type: "article",
           id: "natale_event",
           title: `🎄 Evento Natale 2025`,
@@ -119,18 +109,26 @@ export async function POST(request: NextRequest) {
             parse_mode: "HTML",
           },
           reply_markup: {
-            inline_keyboard: [
-              [{ text: "🎄 Gioca Evento Natale", url: `${MINIAPP_URL}?startapp=natale` }],
-            ],
+            inline_keyboard: [[{ text: "🎄 Gioca Evento Natale", url: `${MINIAPP_URL}?startapp=natale` }]],
           },
-        })
-      }
+        },
+      ]
+
+      const buildTime = Date.now() - startTime
 
       // Rispondi immediatamente - fire and forget
       answerInlineQueryDirect(inlineQuery.id, results, {
         cache_time: INLINE_CACHE_TIME,
         is_personal: true,
-      }).catch((err) => console.error("[Inline] Error:", err))
+      })
+        .then(() => {
+          const totalTime = Date.now() - startTime
+          console.log(`[v0] Inline query answered in ${totalTime}ms (build: ${buildTime}ms)`)
+        })
+        .catch((err) => {
+          const totalTime = Date.now() - startTime
+          console.error(`[v0] Inline query failed after ${totalTime}ms:`, err)
+        })
 
       return NextResponse.json({ ok: true })
     }
