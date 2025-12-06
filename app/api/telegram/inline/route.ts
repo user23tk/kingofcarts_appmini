@@ -78,44 +78,16 @@ function buildInlineResults(userId: string, playerName: string): any[] {
   return [
     {
       type: "article",
-      id: "play_now",
-      title: `🎮 Gioca a ${BOT_NAME}`,
-      description: "Avventure interattive con storie infinite!",
-      thumb_url: "https://v0-beta-3-mini-app.vercel.app/og-image.png",
-      input_message_content: {
-        message_text: `🎮 <b>${BOT_NAME}</b>\n\n${playerName} ti sfida!\n\n🎭 Storie interattive generate dall'AI\n🏆 Classifica globale\n🎄 Evento Natale attivo!\n\n✨ Gioca ora!`,
-        parse_mode: "HTML",
-      },
-      reply_markup: {
-        inline_keyboard: [[{ text: "🎮 Gioca Ora", url: MINIAPP_URL }]],
-      },
-    },
-    {
-      type: "article",
       id: "invite_friends",
-      title: `👥 Invita Amici`,
-      description: "Condividi il gioco con i tuoi amici!",
+      title: `👥 Invita i tuoi amici`,
+      description: `Condividi ${BOT_NAME} con i tuoi amici!`,
       thumb_url: "https://v0-beta-3-mini-app.vercel.app/og-image.png",
       input_message_content: {
-        message_text: `👥 <b>Unisciti a ${BOT_NAME}!</b>\n\n${playerName} ti invita a giocare!\n\n🌈 7 temi diversi da esplorare\n📖 Storie infinite\n🏆 Sfida i tuoi amici in classifica\n\n🎁 Inizia subito!`,
+        message_text: `🎮 <b>${BOT_NAME}</b>\n\n${playerName} ti invita a giocare!\n\n🎭 Storie interattive generate dall'AI\n🌈 7 temi diversi da esplorare\n🏆 Classifica globale\n\n✨ Unisciti all'avventura!`,
         parse_mode: "HTML",
       },
       reply_markup: {
-        inline_keyboard: [[{ text: "🎭 Inizia Avventura", url: inviteUrl }]],
-      },
-    },
-    {
-      type: "article",
-      id: "natale_event",
-      title: `🎄 Evento Natale 2025`,
-      description: "Contest speciale con 2x PP!",
-      thumb_url: "https://v0-beta-3-mini-app.vercel.app/og-image.png",
-      input_message_content: {
-        message_text: `🎄 <b>Evento Natale 2025</b>\n\n${playerName} partecipa al contest natalizio!\n\n🎁 Punti raddoppiati (2x PP)\n🏆 Classifica dedicata\n⏰ Fino al 6 Gennaio 2026\n\n✨ Unisciti ora!`,
-        parse_mode: "HTML",
-      },
-      reply_markup: {
-        inline_keyboard: [[{ text: "🎄 Gioca Evento Natale", url: `${MINIAPP_URL}?startapp=natale` }]],
+        inline_keyboard: [[{ text: "🎮 Gioca Ora", url: inviteUrl }]],
       },
     },
   ]
