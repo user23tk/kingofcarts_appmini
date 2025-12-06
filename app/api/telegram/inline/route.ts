@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 
 export const dynamic = "force-dynamic"
-// Massimizza velocità rimuovendo timeout
 export const maxDuration = 5
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
@@ -10,23 +9,20 @@ const BOT_USERNAME = process.env.BOT_USERNAME || "kingofcarts_betabot"
 
 function ensureHttpsUrl(url: string | undefined, fallback: string): string {
   if (!url) return fallback
-
-  // Se l'URL inizia con //, aggiungi https:
   if (url.startsWith("//")) {
     return `https:${url}`
   }
-
-  // Se l'URL non ha protocollo, aggiungi https://
   if (!url.startsWith("http://") && !url.startsWith("https://")) {
     return `https://${url}`
   }
-
   return url
 }
 
 const MINIAPP_URL = ensureHttpsUrl(process.env.MINIAPP_URL, `https://t.me/${BOT_USERNAME}/app`)
-const APP_DOMAIN = process.env.APP_DOMAIN || "king-of-carts.vercel.app"
-const LOGO_URL = `https://${APP_DOMAIN}/images/king-of-carts-logo.jpg`
+
+// Le immagini servite da Vercel potrebbero non essere accessibili a Telegram
+// Usa un placeholder pubblico o rimuovi il thumbnail se non necessario
+const LOGO_URL = "https://placehold.co/128x128/6366f1/ffffff?text=KoC"
 
 // Interfaccia per inline query
 interface InlineQuery {
@@ -81,11 +77,11 @@ function buildInlineResults(userId: string, playerName: string): any[] {
     {
       type: "article",
       id: "invite_friends",
-      title: `👥 Invita i tuoi amici`,
+      title: `Invita i tuoi amici`,
       description: `Condividi ${BOT_NAME} con i tuoi amici!`,
-      thumb_url: LOGO_URL,
-      thumb_width: 128,
-      thumb_height: 128,
+      thumbnail_url: LOGO_URL,
+      thumbnail_width: 128,
+      thumbnail_height: 128,
       input_message_content: {
         message_text: `🎮 <b>${BOT_NAME}</b>\n\n${playerName} ti invita a giocare!\n\n🎭 Storie interattive generate dall'AI\n🌈 7 temi diversi da esplorare\n🏆 Classifica globale\n\n✨ Unisciti all'avventura!`,
         parse_mode: "HTML",
