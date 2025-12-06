@@ -25,6 +25,8 @@ function ensureHttpsUrl(url: string | undefined, fallback: string): string {
 }
 
 const MINIAPP_URL = ensureHttpsUrl(process.env.MINIAPP_URL, `https://t.me/${BOT_USERNAME}/app`)
+const APP_DOMAIN = process.env.APP_DOMAIN || "king-of-carts.vercel.app"
+const LOGO_URL = `https://${APP_DOMAIN}/images/king-of-carts-logo.jpg`
 
 // Interfaccia per inline query
 interface InlineQuery {
@@ -81,7 +83,9 @@ function buildInlineResults(userId: string, playerName: string): any[] {
       id: "invite_friends",
       title: `👥 Invita i tuoi amici`,
       description: `Condividi ${BOT_NAME} con i tuoi amici!`,
-      thumb_url: "https://v0-beta-3-mini-app.vercel.app/og-image.png",
+      thumb_url: LOGO_URL,
+      thumb_width: 128,
+      thumb_height: 128,
       input_message_content: {
         message_text: `🎮 <b>${BOT_NAME}</b>\n\n${playerName} ti invita a giocare!\n\n🎭 Storie interattive generate dall'AI\n🌈 7 temi diversi da esplorare\n🏆 Classifica globale\n\n✨ Unisciti all'avventura!`,
         parse_mode: "HTML",
