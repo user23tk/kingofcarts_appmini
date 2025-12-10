@@ -194,7 +194,7 @@ export class StoryManager {
           .eq("is_active", true)
         return storyCount || 0
       },
-      300, // Cache for 5 minutes
+      60, // Cache for 1 minute (reduced from 5 to detect new chapters faster)
     )
   }
 
@@ -236,7 +236,9 @@ export class StoryManager {
     const themeProgress = await this.getThemeProgress(userId, theme)
     const availableChapters = await this.getAvailableChaptersCount(theme)
 
-    const isThemeCompleted = themeProgress.current_chapter >= availableChapters
+    // Theme is completed when we're about to finish the last available chapter
+    // After this chapter, newChapter will be > availableChapters
+    const isThemeCompleted = themeProgress.current_chapter === availableChapters
     const newChapter = themeProgress.current_chapter + 1
 
     console.log(
@@ -490,16 +492,28 @@ export class StoryManager {
 
     if (data) {
       const validatedChapter = Math.max(1, data.current_chapter || 1)
+      const availableChapters = await this.getAvailableChaptersCount(theme)
+      // Theme is completed when current_chapter > availableChapters
+      // (i.e., user has completed all chapters and next chapter to play is beyond available)
+      const actuallyCompleted = validatedChapter > availableChapters
+
+      if (data.completed && !actuallyCompleted) {
+        console.log(`[v0] Theme ${theme} was completed but new chapters added. Resetting completed flag.`)
+        await this.updateUserProgress(userId, theme, validatedChapter, false)
+      }
+
       console.log("[v0] Theme progress retrieved:", {
         theme,
         originalChapter: data.current_chapter,
         validatedChapter,
-        completed: data.completed,
+        availableChapters,
+        storedCompleted: data.completed,
+        actuallyCompleted,
       })
 
       return {
         current_chapter: validatedChapter,
-        completed: data.completed || false,
+        completed: actuallyCompleted,
         last_interaction: data.last_interaction || new Date().toISOString(),
       }
     }

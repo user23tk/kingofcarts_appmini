@@ -7,8 +7,6 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
 const BOT_NAME = process.env.BOT_DISPLAY_NAME || "King of Carts"
 const BOT_USERNAME = process.env.BOT_USERNAME || "kingofcarts_betabot"
 const MINIAPP_URL = process.env.MINIAPP_URL || `https://t.me/${BOT_USERNAME}/app`
-// Cache time basso per risultati più reattivi (0 = no cache)
-const INLINE_CACHE_TIME = 0
 
 let bot: any = null
 let antiReplayManager: any = null
@@ -29,18 +27,37 @@ async function getAntiReplayManager() {
   return antiReplayManager
 }
 
-async function answerInlineQueryDirect(inlineQueryId: string, results: any[], options: any) {
-  const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerInlineQuery`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      inline_query_id: inlineQueryId,
-      results,
-      cache_time: options.cache_time || 300,
-      is_personal: options.is_personal || false,
-    }),
-  })
-  return response.json()
+async function forwardInlineQuery(request: NextRequest, body: TelegramUpdate): Promise<NextResponse> {
+  const startTime = Date.now()
+  const userId = body.inline_query?.from.id.toString()
+
+  console.log(`[v0] Forwarding inline query from ${userId} to dedicated endpoint`)
+
+  try {
+    // Chiama l'endpoint inline dedicato internamente
+    const inlineUrl = new URL("/api/telegram/inline", request.url)
+
+    const response = await fetch(inlineUrl.toString(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-telegram-bot-api-secret-token": process.env.TELEGRAM_WEBHOOK_SECRET || "",
+      },
+      body: JSON.stringify(body),
+    })
+
+    const result = await response.json()
+    const totalTime = Date.now() - startTime
+
+    console.log(`[v0] Inline forward completed in ${totalTime}ms - ok: ${result.ok}`)
+
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    const totalTime = Date.now() - startTime
+    console.error(`[v0] Inline forward failed after ${totalTime}ms:`, error)
+    // Ritorna ok per non bloccare Telegram
+    return NextResponse.json({ ok: true })
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -59,80 +76,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (update.inline_query) {
-      const inlineQuery = update.inline_query
-      const userId = inlineQuery.from.id.toString()
-      const playerName = inlineQuery.from.first_name || "Viaggiatore"
-      const query = (inlineQuery.query || "").toLowerCase().trim()
-      const inviteUrl = `https://t.me/${BOT_USERNAME}?start=invite_${userId}`
-
-      // Risultati diversi in base alla query
-      const results: any[] = []
-
-      // Risultato principale - sempre visibile
-      results.push({
-        type: "article",
-        id: "play_now",
-        title: `🎮 Gioca a ${BOT_NAME}`,
-        description: "Avventure interattive con storie infinite!",
-        thumb_url: "https://v0-beta-3-mini-app.vercel.app/og-image.png",
-        input_message_content: {
-          message_text: `🎮 <b>${BOT_NAME}</b>\n\n${playerName} ti sfida!\n\n🎭 Storie interattive generate dall'AI\n🏆 Classifica globale\n🎄 Evento Natale attivo!\n\n✨ Gioca ora!`,
-          parse_mode: "HTML",
-        },
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: "🎮 Gioca Ora", url: MINIAPP_URL }],
-          ],
-        },
-      })
-
-      // Invito amici
-      if (!query || query.includes("invit") || query.includes("amici") || query.includes("friend")) {
-        results.push({
-          type: "article",
-          id: "invite_friends",
-          title: `👥 Invita Amici`,
-          description: "Condividi il gioco con i tuoi amici!",
-          thumb_url: "https://v0-beta-3-mini-app.vercel.app/og-image.png",
-          input_message_content: {
-            message_text: `👥 <b>Unisciti a ${BOT_NAME}!</b>\n\n${playerName} ti invita a giocare!\n\n🌈 7 temi diversi da esplorare\n📖 Storie infinite\n🏆 Sfida i tuoi amici in classifica\n\n🎁 Inizia subito!`,
-            parse_mode: "HTML",
-          },
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: "🎭 Inizia Avventura", url: inviteUrl }],
-            ],
-          },
-        })
-      }
-
-      // Evento Natale
-      if (!query || query.includes("natal") || query.includes("christmas") || query.includes("event")) {
-        results.push({
-          type: "article",
-          id: "natale_event",
-          title: `🎄 Evento Natale 2025`,
-          description: "Contest speciale con 2x PP!",
-          thumb_url: "https://v0-beta-3-mini-app.vercel.app/og-image.png",
-          input_message_content: {
-            message_text: `🎄 <b>Evento Natale 2025</b>\n\n${playerName} partecipa al contest natalizio!\n\n🎁 Punti raddoppiati (2x PP)\n🏆 Classifica dedicata\n⏰ Fino al 6 Gennaio 2026\n\n✨ Unisciti ora!`,
-            parse_mode: "HTML",
-          },
-          reply_markup: {
-            inline_keyboard: [
-              [{ text: "🎄 Gioca Evento Natale", url: `${MINIAPP_URL}?startapp=natale` }],
-            ],
-          },
-        })
-      }
-
-      // Rispondi immediatamente - fire and forget
-      answerInlineQueryDirect(inlineQuery.id, results, {
-        cache_time: INLINE_CACHE_TIME,
-        is_personal: true,
-      }).catch((err) => console.error("[Inline] Error:", err))
-
-      return NextResponse.json({ ok: true })
+      return forwardInlineQuery(request, update)
     }
 
     // Regular path - load heavy modules only when needed
