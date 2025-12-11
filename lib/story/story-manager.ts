@@ -493,14 +493,6 @@ export class StoryManager {
     if (data) {
       const validatedChapter = Math.max(1, data.current_chapter || 1)
       const availableChapters = await this.getAvailableChaptersCount(theme)
-      // Theme is completed when current_chapter > availableChapters
-      // (i.e., user has completed all chapters and next chapter to play is beyond available)
-      const actuallyCompleted = validatedChapter > availableChapters
-
-      if (data.completed && !actuallyCompleted) {
-        console.log(`[v0] Theme ${theme} was completed but new chapters added. Resetting completed flag.`)
-        await this.updateUserProgress(userId, theme, validatedChapter, false)
-      }
 
       console.log("[v0] Theme progress retrieved:", {
         theme,
@@ -508,12 +500,11 @@ export class StoryManager {
         validatedChapter,
         availableChapters,
         storedCompleted: data.completed,
-        actuallyCompleted,
       })
 
       return {
         current_chapter: validatedChapter,
-        completed: actuallyCompleted,
+        completed: data.completed || false,
         last_interaction: data.last_interaction || new Date().toISOString(),
       }
     }
