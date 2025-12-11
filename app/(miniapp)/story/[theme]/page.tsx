@@ -330,8 +330,8 @@ export default function StoryPage() {
               </p>
               <p className="mb-4 text-sm text-muted-foreground">
                 {isHourlyLimit
-                  ? "Hai raggiunto il limite di 10 capitoli per questa ora."
-                  : "Hai raggiunto il limite di 50 capitoli per oggi."}
+                  ? "Hai raggiunto il limite orario di gioco."
+                  : "Hai raggiunto il limite giornaliero di gioco."}
               </p>
               <div className="mb-6 p-3 rounded-lg bg-primary/10 border border-primary/20">
                 <p className="text-sm font-medium text-primary">🕐 {getResetTimeMessage()}</p>
