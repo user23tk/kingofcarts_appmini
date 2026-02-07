@@ -55,14 +55,14 @@ export interface LeaderboardEntry {
 export class LeaderboardManager {
   /**
    * Get top N players from the leaderboard
-   * Uses RPC: get_top_players (PP-first algorithm)
+   * Uses RPC: get_leaderboard (PP-first algorithm)
    */
   static async getTopPlayers(limit = 100): Promise<LeaderboardPlayer[]> {
     const supabase = await createClient()
 
     try {
-      const { data, error } = await supabase.rpc("get_top_players", {
-        p_limit: limit,
+      const { data, error } = await supabase.rpc("get_leaderboard", {
+        limit_count: limit,
       })
 
       if (error) {
@@ -79,9 +79,9 @@ export class LeaderboardManager {
         username: player.username || player.first_name || "Anonymous",
         firstName: player.first_name || "Anonymous",
         totalScore: player.total_pp || 0, // PP is the primary score
-        chaptersCompleted: player.chapters_completed || 0,
+        chaptersCompleted: player.total_chapters_completed || 0,
         themesCompleted: player.themes_completed || 0,
-        rank: Number(player.rank),
+        rank: Number(player.current_rank),
       }))
     } catch (error) {
       console.error("[LeaderboardManager] Failed to get top players:", error)

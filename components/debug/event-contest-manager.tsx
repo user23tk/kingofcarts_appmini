@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Calendar, Trophy, Zap, AlertCircle, CheckCircle2, Plus, Trash2 } from "lucide-react"
+import { Calendar, Trophy, Zap, AlertCircle, CheckCircle2, Plus, Trash2, Gift } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { debugFetch } from "@/lib/debug/auth-helper"
 
@@ -159,6 +159,39 @@ export function EventContestManager() {
       } else {
         const error = await response.json()
         setMessage({ type: "error", text: error.error || "Errore nell'eliminazione dell'evento" })
+      }
+    } catch (error) {
+      setMessage({ type: "error", text: "Errore di connessione" })
+    }
+  }
+
+  const handleCreateGiveaway = async (eventId: string) => {
+    if (!adminKey) {
+      setMessage({ type: "error", text: "Admin key richiesta" })
+      return
+    }
+
+    const prizeTitle = prompt("Inserisci il titolo del premio per il giveaway (es: 1000 Stars):")
+    if (!prizeTitle) return
+
+    try {
+      const response = await debugFetch("/api/debug/events/create-giveaway", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          adminKey,
+          theme_id: eventId,
+          prize_title: prizeTitle,
+          top_n: 10 // Default
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setMessage({ type: "success", text: `Giveaway creato con successo! (${data.entries_created} partecipanti)` })
+      } else {
+        const error = await response.json()
+        setMessage({ type: "error", text: error.error || "Errore nella creazione del giveaway" })
       }
     } catch (error) {
       setMessage({ type: "error", text: "Errore di connessione" })
@@ -356,6 +389,9 @@ export function EventContestManager() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => handleCreateGiveaway(event.id)} title="Crea Giveaway da questo evento">
+                      <Gift className="h-4 w-4" />
+                    </Button>
                     <Badge variant={event.is_active ? "default" : "secondary"}>
                       {event.is_active ? "Attivo" : "Disattivato"}
                     </Badge>

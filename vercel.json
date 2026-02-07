@@ -1,0 +1,13 @@
+{
+    "framework": "nextjs",
+    "crons": [
+        {
+            "path": "/api/cron/events",
+            "schedule": "0 * * * *"
+        },
+        {
+            "path": "/api/cron/giveaways",
+            "schedule": "*/15 * * * *"
+        }
+    ]
+}

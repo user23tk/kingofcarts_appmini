@@ -475,9 +475,8 @@ export function GiveawayManager() {
         {giveaways.map((giveaway) => (
           <Card
             key={giveaway.id}
-            className={`cursor-pointer transition-all ${
-              selectedGiveaway === giveaway.id ? "ring-2 ring-primary" : "hover:border-primary/50"
-            } ${!giveaway.is_active ? "opacity-60" : ""}`}
+            className={`cursor-pointer transition-all ${selectedGiveaway === giveaway.id ? "ring-2 ring-primary" : "hover:border-primary/50"
+              } ${!giveaway.is_active ? "opacity-60" : ""}`}
             onClick={() => setSelectedGiveaway(giveaway.id)}
           >
             <CardHeader className="pb-2">
@@ -602,24 +601,37 @@ export function GiveawayManager() {
               </div>
             </div>
 
-            {/* Draw Button */}
-            <div className="mt-6 pt-6 border-t">
+            {/* Draw Button & Export */}
+            <div className="mt-6 pt-6 border-t space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="font-semibold">Estrazione Vincitore</h4>
+                  <h4 className="font-semibold">Azioni Admin</h4>
                   <p className="text-sm text-muted-foreground">
-                    Estrae casualmente un ticket tra i {stats.total_entries} partecipanti
+                    Gestisci i partecipanti ed estrai il vincitore
                   </p>
                 </div>
-                <Button
-                  size="lg"
-                  onClick={handleDraw}
-                  disabled={drawing || !stats.is_active || stats.total_entries === 0}
-                  className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
-                >
-                  {drawing ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Crown className="h-5 w-5 mr-2" />}
-                  {drawing ? "Estrazione..." : "Estrai Vincitore"}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      window.open(`/api/debug/giveaway/export?giveaway_id=${stats.giveaway_id}`, '_blank');
+                    }}
+                  >
+                    <Upload className="h-4 w-4 mr-2 rotate-180" />
+                    Export CSV
+                  </Button>
+
+                  <Button
+                    size="lg"
+                    onClick={handleDraw}
+                    disabled={drawing || !stats.is_active || stats.total_entries === 0}
+                    className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+                  >
+                    {drawing ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Crown className="h-5 w-5 mr-2" />}
+                    {drawing ? "Estrazione..." : "Estrai Vincitore"}
+                  </Button>
+                </div>
               </div>
 
               {!stats.is_active && (
