@@ -70,7 +70,7 @@ export class LeaderboardManager {
         throw error
       }
 
-      if (!data || data.length === 0) {
+      if (!data || !Array.isArray(data) || data.length === 0) {
         return []
       }
 
@@ -107,11 +107,12 @@ export class LeaderboardManager {
         throw error
       }
 
-      if (!data || data.length === 0) {
+      if (!data || !Array.isArray(data) || data.length === 0) {
         return null
       }
 
       const rankData = data[0]
+      if (!rankData) return null
 
       return {
         rank: Number(rankData.rank) || 0,

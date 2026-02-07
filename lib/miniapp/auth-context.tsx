@@ -83,10 +83,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (storedToken && storedUser) {
       try {
-        setToken(storedToken)
-        setUser(JSON.parse(storedUser))
-        setIsLoading(false)
-        return
+        const parsedUser = JSON.parse(storedUser) as User
+
+        // Validate against current Telegram user if available
+        if (tgUser && parsedUser.telegramId !== tgUser.id) {
+          console.warn("Stored user does not match current Telegram user. Clearing session.", {
+            stored: parsedUser.telegramId,
+            current: tgUser.id
+          })
+          localStorage.removeItem("miniapp_token")
+          localStorage.removeItem("miniapp_user")
+          // Allow flow to continue to auto-login below
+        } else {
+          setToken(storedToken)
+          setUser(parsedUser)
+          setIsLoading(false)
+          return
+        }
       } catch (error) {
         console.error("Failed to restore session:", error)
         localStorage.removeItem("miniapp_token")
@@ -100,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       setIsLoading(false)
     }
-  }, [isReady, isInTelegram, initData])
+  }, [isReady, isInTelegram, initData, tgUser])
 
   const contextValue = useMemo(
     () => ({

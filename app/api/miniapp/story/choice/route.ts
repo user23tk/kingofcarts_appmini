@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
   // Rate limit check
   const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || undefined
   const userAgent = request.headers.get("user-agent") || undefined
-  
+
   const securityCheck = await MiniAppSecurity.validateRequest(
     userId,
     "STORY_CHOICE",
@@ -34,8 +34,8 @@ export async function POST(request: NextRequest) {
   if (!securityCheck.success) {
     // Include burst information in the response
     return NextResponse.json(
-      { 
-        error: securityCheck.error, 
+      {
+        error: securityCheck.error,
         code: securityCheck.isBurst ? "BURST_LIMIT" : "RATE_LIMIT_EXCEEDED",
         isBurst: securityCheck.isBurst,
         resetTime: securityCheck.resetTime,
@@ -287,7 +287,16 @@ export async function POST(request: NextRequest) {
 
     if (isLastScene) {
       const totalPP = updatedSession.ppAccumulated
-      await storyManager.completeChapter(userId, theme, totalPP)
+
+      // Calculate multiplier BEFORE completing chapter so the stored value is correct if intended (or just to display correct value)
+      // Wait, if the DB stores base PP and leaderboard uses base PP, then we shouldn't multiply stored value. 
+      // But the logs say "PP Gained: 20" (multiplied) while choice was +6.
+      // If the intent is to AWARD multiplied PP, we must multiply BEFORE adding to DB.
+
+      const multiplier = await import("@/lib/story/event-manager").then((m) => m.EventManager.getPPMultiplier(theme))
+      const finalPPEarned = Math.floor(totalPP * multiplier)
+
+      await storyManager.completeChapter(userId, theme, finalPPEarned) // Save FINAL amount
 
       sessionManager.clearSession(userId)
 
@@ -295,9 +304,6 @@ export async function POST(request: NextRequest) {
       QueryCache.invalidate(`telegram_user:${telegramUser.id}`)
 
       const progress = await storyManager.getUserProgress(userId)
-
-      const multiplier = await import("@/lib/story/event-manager").then((m) => m.EventManager.getPPMultiplier(theme))
-      const finalPPEarned = Math.floor(totalPP * multiplier)
 
       console.info("miniapp-story-choice", "Chapter completed", { userId, theme, ppEarned: finalPPEarned })
 
