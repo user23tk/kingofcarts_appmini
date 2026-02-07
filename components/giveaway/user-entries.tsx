@@ -12,8 +12,8 @@ interface UserEntriesProps {
   }>
 }
 
-export function UserEntries({ entries }: UserEntriesProps) {
-  if (entries.length === 0) {
+export function UserEntries({ entries = [] }: UserEntriesProps) {
+  if (!entries || entries.length === 0) {
     return (
       <Card className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 backdrop-blur-md border border-purple-500/20">
         <CardHeader className="pb-2">
