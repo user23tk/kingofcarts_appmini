@@ -115,7 +115,7 @@ export default function GiveawayPage() {
     )
   }
 
-  if (error || !giveaway) {
+  if (error) {
     return (
       <div className="relative min-h-screen pb-20">
         <AnimatedBackground theme="fantasy" intensity="low" variant="menu" />
@@ -254,6 +254,56 @@ export default function GiveawayPage() {
                     </p>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      </div>
+    )
+  }
+
+  // Nessun giveaway trovato (admin ha disattivato o nessuno creato)
+  if (!giveaway) {
+    return (
+      <div className="relative min-h-screen pb-20">
+        <AnimatedBackground theme="fantasy" intensity="low" variant="menu" />
+        <div className="relative z-10 p-4">
+          <div className="mb-6 flex items-center space-x-4">
+            <div>
+              <h1 className="text-2xl font-bold">Giveaway</h1>
+              <p className="text-sm text-muted-foreground">Premi e Contest</p>
+            </div>
+          </div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Card className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 backdrop-blur-sm border border-purple-500/20 overflow-hidden">
+              <CardContent className="py-10 text-center relative">
+                <div className="absolute top-4 left-4 text-purple-400/20">
+                  <Sparkles className="w-8 h-8" />
+                </div>
+                <div className="absolute bottom-4 right-4 text-indigo-400/20">
+                  <Star className="w-8 h-8" />
+                </div>
+                <motion.div
+                  animate={{ y: [0, -10, 0], rotate: [0, 5, -5, 0] }}
+                  transition={{ duration: 3, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
+                >
+                  <Gift className="w-20 h-20 mx-auto mb-6 text-purple-400/60" />
+                </motion.div>
+                <h3 className="text-xl font-bold mb-2 text-white">Nessun Giveaway Attivo</h3>
+                <p className="text-sm text-white/60 mb-6 max-w-xs mx-auto">
+                  Al momento non ci sono contest attivi. Nel frattempo, continua a giocare per accumulare PP!
+                </p>
+                <Button
+                  onClick={() => { hapticFeedback("medium"); router.push("/themes") }}
+                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                >
+                  <Zap className="w-4 h-4 mr-2" />
+                  Gioca Ora
+                </Button>
               </CardContent>
             </Card>
           </motion.div>

@@ -19,6 +19,7 @@ interface EventResponse {
     pp_multiplier: number
     event_end_date?: string
     description?: string
+    has_ended: boolean
   } | null
   players: Array<{
     rank: number
@@ -40,6 +41,7 @@ function formatEventResponse(event: ActiveEvent, players: EventPlayer[]): EventR
       pp_multiplier: event.pp_multiplier,
       event_end_date: event.event_end_date,
       description: event.description,
+      has_ended: event.has_ended,
     },
     players: players.map((player, index) => ({
       rank: player.rank || index + 1,
@@ -72,10 +74,10 @@ export async function GET() {
   } catch (error) {
     console.error("[/api/leaderboard/event] Error:", error)
     return NextResponse.json(
-      { 
-        activeEvent: null, 
-        players: [], 
-        error: "Failed to fetch event data" 
+      {
+        activeEvent: null,
+        players: [],
+        error: "Failed to fetch event data"
       },
       { status: 500, headers: NO_CACHE_HEADERS },
     )

@@ -52,6 +52,7 @@ interface ActiveEvent {
   event_emoji: string
   pp_multiplier: number
   event_end_date: string
+  has_ended: boolean
 }
 
 const fetcher = async (url: string) => {
@@ -168,11 +169,11 @@ export default function LeaderboardPage() {
             </TabsTrigger>
             <TabsTrigger
               value="event"
-              className="data-[state=active]:bg-yellow-500 data-[state=active]:text-black"
+              className={`data-[state=active]:text-black ${activeEvent?.has_ended ? 'data-[state=active]:bg-gray-500' : 'data-[state=active]:bg-yellow-500'}`}
               disabled={!activeEvent}
             >
               <Zap className="w-4 h-4 mr-2" />
-              {activeEvent ? `${activeEvent.event_emoji} Contest` : "Nessun Contest"}
+              {activeEvent ? (activeEvent.has_ended ? `${activeEvent.event_emoji} Concluso` : `${activeEvent.event_emoji} Contest`) : "Nessun Contest"}
             </TabsTrigger>
           </TabsList>
 
@@ -307,11 +308,10 @@ export default function LeaderboardPage() {
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: index * 0.02 }}
-                          className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
-                            entry.isCurrentUser
+                          className={`flex items-center justify-between p-3 rounded-lg transition-colors ${entry.isCurrentUser
                               ? "bg-[#2AABEE]/20 border border-[#2AABEE]/50"
                               : "bg-[#2C3847]/50 hover:bg-[#2C3847]"
-                          }`}
+                            }`}
                         >
                           <div className="flex items-center gap-3 flex-1 min-w-0">
                             <div className="flex-shrink-0 w-8">{getRankIcon(entry.rank)}</div>
@@ -354,7 +354,9 @@ export default function LeaderboardPage() {
                           <div className="text-5xl">{activeEvent.event_emoji}</div>
                           <div>
                             <CardTitle className="text-white text-xl">{activeEvent.event_name}</CardTitle>
-                            <CardDescription className="text-gray-300">Contest Speciale</CardDescription>
+                            <CardDescription className="text-gray-300">
+                              {activeEvent.has_ended ? "🏆 Contest Concluso" : "Contest Speciale"}
+                            </CardDescription>
                           </div>
                         </div>
                         <Badge className="bg-yellow-500 text-black font-bold text-lg px-3 py-1">
@@ -366,7 +368,7 @@ export default function LeaderboardPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 text-white">
                           <Clock className="w-4 h-4" />
-                          <span className="text-sm">Termina il: </span>
+                          <span className="text-sm">{activeEvent.has_ended ? "Terminato il: " : "Termina il: "}</span>
                           <span className="font-semibold">
                             {new Date(activeEvent.event_end_date).toLocaleDateString()}
                           </span>
@@ -430,11 +432,10 @@ export default function LeaderboardPage() {
                                 initial={{ opacity: 0, x: -20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: index * 0.02 }}
-                                className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
-                                  isCurrentUser
+                                className={`flex items-center justify-between p-3 rounded-lg transition-colors ${isCurrentUser
                                     ? "bg-yellow-500/20 border border-yellow-500/50"
                                     : "bg-[#2C3847]/50 hover:bg-[#2C3847]"
-                                }`}
+                                  }`}
                               >
                                 <div className="flex items-center gap-3 flex-1 min-w-0">
                                   <div className="flex-shrink-0 w-8">{getRankIcon(entry.rank)}</div>

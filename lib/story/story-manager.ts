@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin-singleton"
 import { PPValidator } from "@/lib/security/pp-validator"
 import { QueryCache } from "@/lib/cache/query-cache"
 import { EventManager } from "@/lib/story/event-manager"
+import { generateChapter as generateChapterAI, getDailyLimitStatus as getChapterLimitStatus } from "@/lib/story/chapter-generator"
 
 export interface StoryChoice {
   id: string
@@ -110,10 +111,23 @@ export class StoryManager {
           console.log("[v0] Found chapter in database:", dbChapter.id)
           return dbChapter
         }
-        console.log("[v0] Chapter not found in database")
+
+        // Chapter not in DB — attempt dynamic generation
+        console.log(`[v0] Chapter ${chapterNumber} not found for ${theme}, attempting dynamic generation...`)
+        try {
+          const generated = await generateChapterAI(theme, chapterNumber)
+          if (generated) {
+            console.log(`[v0] Dynamically generated chapter: ${generated.id}`)
+            return generated
+          }
+        } catch (genError) {
+          console.error("[v0] Dynamic chapter generation failed:", genError)
+        }
+
+        console.log("[v0] Chapter not found and generation failed/unavailable")
         return null
       },
-      300, // Cache chapters for 5 minutes (they rarely change)
+      300, // Cache chapters for 5 minutes
     )
   }
 
@@ -198,14 +212,57 @@ export class StoryManager {
     )
   }
 
-  formatStoryText(text: string, playerName: string, totalPP?: number): string {
+  formatStoryText(
+    text: string,
+    playerName: string,
+    totalPP?: number,
+    context?: {
+      rank?: number
+      themeChapters?: number
+      themeEmoji?: string
+    }
+  ): string {
     let formatted = text.replace(/\{\{KING\}\}/g, "King of Carts").replace(/\{\{PLAYER\}\}/g, playerName)
 
     if (totalPP !== undefined) {
       formatted = formatted.replace(/\{\{TOTAL_PP\}\}/g, totalPP.toString())
     }
 
+    // Roleplay placeholders
+    if (context?.rank !== undefined) {
+      formatted = formatted.replace(/\{\{RANK\}\}/g, `#${context.rank}`)
+
+      // Title based on rank
+      let title = "Vagabondo"
+      if (context.rank === 1) title = "Re Supremo"
+      else if (context.rank <= 3) title = "Nobile del Regno"
+      else if (context.rank <= 10) title = "Cavaliere dell'Ordine"
+      else if (context.rank <= 50) title = "Esploratore Valoroso"
+      else if (context.rank <= 100) title = "Apprendista del King"
+      formatted = formatted.replace(/\{\{TITLE\}\}/g, title)
+    } else {
+      formatted = formatted.replace(/\{\{RANK\}\}/g, "")
+      formatted = formatted.replace(/\{\{TITLE\}\}/g, "Avventuriero")
+    }
+
+    if (context?.themeChapters !== undefined) {
+      formatted = formatted.replace(/\{\{THEME_CHAPTERS\}\}/g, context.themeChapters.toString())
+    }
+
+    if (context?.themeEmoji) {
+      formatted = formatted.replace(/\{\{THEME_EMOJI\}\}/g, context.themeEmoji)
+    } else {
+      formatted = formatted.replace(/\{\{THEME_EMOJI\}\}/g, "📖")
+    }
+
     return formatted
+  }
+
+  /**
+   * Check daily generation limit for a theme
+   */
+  async getDailyLimitStatus(theme: string) {
+    return getChapterLimitStatus(theme)
   }
 
   async completeChapter(userId: string, theme: string, ppGained: number): Promise<void> {

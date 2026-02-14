@@ -58,22 +58,27 @@ export async function POST(request: NextRequest) {
     const themeProgress = await storyManager.getThemeProgress(userId, theme)
     const availableChapters = await storyManager.getAvailableChaptersCount(theme)
 
+    // Se tutti i capitoli pre-esistenti sono stati completati,
+    // controlla solo se il limite giornaliero di generazione è stato raggiunto.
+    // getChapter() si occuperà di generare dinamicamente i capitoli mancanti.
     if (themeProgress.completed || themeProgress.current_chapter > availableChapters) {
-      console.warn("miniapp-story-choice", "Attempted to play completed theme", {
-        userId,
-        theme,
-        themeCompleted: themeProgress.completed,
-        currentChapter: themeProgress.current_chapter,
-        availableChapters,
-      })
-      return NextResponse.json(
-        {
-          error: "Hai già completato tutti i capitoli disponibili per questo tema!",
-          code: "THEME_COMPLETED",
-          waiting: true,
-        },
-        { status: 400 },
-      )
+      const limitStatus = await storyManager.getDailyLimitStatus(theme)
+      if (!limitStatus.allowed) {
+        console.log("miniapp-story-choice", "Daily generation limit reached", {
+          userId,
+          theme,
+          currentChapter: themeProgress.current_chapter,
+          availableChapters,
+        })
+        return NextResponse.json(
+          {
+            error: limitStatus.message,
+            code: "DAILY_LIMIT_REACHED",
+            waiting: true,
+          },
+          { status: 429 },
+        )
+      }
     }
 
     if (chapterNumber !== themeProgress.current_chapter) {

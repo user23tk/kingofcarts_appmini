@@ -41,12 +41,12 @@ export async function POST(request: NextRequest) {
 
     if (!securityCheck.success) {
       return NextResponse.json(
-        { 
-          error: securityCheck.error, 
+        {
+          error: securityCheck.error,
           code: securityCheck.isBurst ? "BURST_LIMIT" : "RATE_LIMIT_EXCEEDED",
           isBurst: securityCheck.isBurst,
           resetTime: securityCheck.resetTime,
-        }, 
+        },
         { status: securityCheck.status }
       )
     }
@@ -91,46 +91,30 @@ export async function POST(request: NextRequest) {
       themeCompleted: themeProgress.completed,
     })
 
-    // Blocco anticipato per tema completato - PRIMA di caricare il capitolo
-    if (themeProgress.completed === true) {
-      console.info("miniapp-story-start", "Theme already completed, blocking access", {
-        userId,
-        theme,
-        chapterNumber,
-        availableChapters,
-      })
-      return NextResponse.json(
-        {
-          success: false,
-          waiting: true,
-          message: `Hai completato tutti i ${availableChapters} capitoli disponibili per questo tema! 🎉\n\nNuovi capitoli verranno aggiunti presto. Torna a controllare più tardi!`,
-          completedChapters: availableChapters,
+    // Se tutti i capitoli pre-esistenti sono completati,
+    // controlla il limite giornaliero di generazione.
+    // getChapter() genererà dinamicamente i capitoli mancanti.
+    if (themeProgress.completed === true || chapterNumber > availableChapters) {
+      const limitStatus = await storyManager.getDailyLimitStatus(theme)
+      if (!limitStatus.allowed) {
+        console.info("miniapp-story-start", "Daily generation limit reached", {
+          userId,
           theme,
-        },
-        { status: 200 },
-      )
-    }
-
-    if (chapterNumber > availableChapters) {
-      console.info("miniapp-story-start", "Chapter beyond available", {
-        userId,
-        theme,
-        chapterNumber,
-        availableChapters,
-      })
-      return NextResponse.json(
-        {
-          success: false,
-          waiting: true,
-          message:
-            availableChapters === 0
-              ? `I capitoli per questo tema sono in arrivo! 🎄\n\nTorna presto a controllare!`
-              : `Hai completato tutti i ${availableChapters} capitoli disponibili per questo tema! 🎉\n\nNuovi capitoli verranno aggiunti presto. Torna a controllare più tardi!`,
-          completedChapters: availableChapters,
-          theme,
-        },
-        { status: 200 },
-      )
+          chapterNumber,
+          availableChapters,
+        })
+        return NextResponse.json(
+          {
+            success: false,
+            waiting: true,
+            message: limitStatus.message,
+            completedChapters: availableChapters,
+            theme,
+            code: "DAILY_LIMIT_REACHED",
+          },
+          { status: 200 },
+        )
+      }
     }
 
     console.debug("miniapp-story-start", "Loading chapter", { chapterNumber, theme })

@@ -11,6 +11,7 @@ export interface ActiveEvent {
   pp_multiplier: number
   is_active: boolean
   is_event: boolean
+  has_ended: boolean
   event_emoji?: string
   emoji?: string
 }
@@ -80,12 +81,10 @@ export class EventManager {
 
     const theme = data[0]
     const now = new Date()
-    const isWithinTimeWindow =
-      (!theme.event_start_date || new Date(theme.event_start_date) <= now) &&
-      (!theme.event_end_date || new Date(theme.event_end_date) > now)
+    const hasEnded = theme.event_end_date ? new Date(theme.event_end_date) <= now : false
 
-    if (!isWithinTimeWindow) return null
-
+    // Visibile finché l'admin non lo disattiva (is_active=false)
+    // has_ended indica solo che il periodo è scaduto, non che deve essere nascosto
     return {
       id: theme.name,
       name: theme.name,
@@ -96,6 +95,7 @@ export class EventManager {
       pp_multiplier: theme.pp_multiplier || 1.0,
       is_active: true,
       is_event: true,
+      has_ended: hasEnded,
       event_emoji: theme.event_emoji || theme.emoji,
       emoji: theme.emoji || theme.event_emoji,
     }
@@ -112,8 +112,9 @@ export class EventManager {
     const themeDesc = (event.description || event.theme_description) as string | undefined
     const startDate = (event.event_start_date || event.start_date) as string | undefined
     const endDate = (event.event_end_date || event.end_date) as string | undefined
+    const hasEnded = endDate ? new Date(endDate) <= new Date() : false
 
-    console.log("Evento attivo trovato:", themeId)
+    console.log("Evento trovato:", themeId, hasEnded ? "(concluso)" : "(attivo)")
 
     return {
       id: themeId,
@@ -125,6 +126,7 @@ export class EventManager {
       pp_multiplier: parseFloat(String(event.pp_multiplier)) || 1.0,
       is_active: true,
       is_event: true,
+      has_ended: hasEnded,
       event_emoji: (event.event_emoji || event.emoji) as string,
       emoji: (event.emoji || event.event_emoji) as string
     }
