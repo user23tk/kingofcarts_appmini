@@ -8,6 +8,7 @@ interface AnimatedBackgroundProps {
   intensity?: "low" | "medium" | "high"
   variant?: "scene" | "menu"
   imageUrl?: string | null
+  videoUrl?: string | null
 }
 
 const clampOpacity = (value: number): number => {
@@ -54,7 +55,7 @@ const hexToRgba = (hex: string, alpha: number): string => {
   return `rgba(${r}, ${g}, ${b}, ${clampedAlpha})`
 }
 
-export function AnimatedBackground({ theme, intensity = "medium", variant = "scene", imageUrl }: AnimatedBackgroundProps) {
+export function AnimatedBackground({ theme, intensity = "medium", variant = "scene", imageUrl, videoUrl }: AnimatedBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const colors = getThemeColors(theme)
 
@@ -132,8 +133,20 @@ export function AnimatedBackground({ theme, intensity = "medium", variant = "sce
 
   return (
     <div className="fixed inset-0 -z-10 overflow-hidden">
-      {/* Base gradient layer OR Custom Image */}
-      {imageUrl ? (
+      {/* Base gradient layer OR Custom Image OR Video */}
+      {videoUrl ? (
+        <div className="absolute inset-0">
+          <video
+            src={videoUrl}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-cover opacity-60"
+          />
+          <div className="absolute inset-0 bg-black/40" />
+        </div>
+      ) : imageUrl ? (
         <div className="absolute inset-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

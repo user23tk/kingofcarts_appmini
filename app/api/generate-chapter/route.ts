@@ -182,6 +182,7 @@ GENERA IL CAPITOLO SEGUENDO ESATTAMENTE QUESTA STRUTTURA.`
               goto: c.goto,
             })),
             background_image_url: imageUrls[s.index] || null,
+            video_url: s.index === 6 ? videoUrl : null,
           })),
           finale: parsed.finale,
         }

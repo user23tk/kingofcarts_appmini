@@ -348,6 +348,7 @@ export async function POST(request: NextRequest) {
         ),
         choices: nextScene.choices || null,
         background_image_url: nextScene.background_image_url,
+        video_url: nextScene.video_url,
       },
       ppEarned: ppDelta,
       sessionPP: updatedSession.ppAccumulated,

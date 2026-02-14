@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Home } from "lucide-react"
 import { useBackButton, useHapticFeedback } from "@/lib/telegram/webapp-client"
+import { type ThemeName } from "@/lib/theme-colors"
 
 interface Choice {
   id: string
@@ -29,7 +30,7 @@ export default function StoryPage() {
   const params = useParams()
   const router = useRouter()
   const { user, isAuthenticated, isLoading: authLoading, initData } = useAuth()
-  const theme = params.theme as string
+  const theme = params.theme as ThemeName
 
   const [isLoading, setIsLoading] = useState(true)
   const [isTransitioning, setIsTransitioning] = useState(false)
@@ -394,6 +395,7 @@ export default function StoryPage() {
     text: string
     choices: Choice[] | null
     background_image_url?: string | null
+    video_url?: string | null
   }
 
   if (!currentScene) {
@@ -407,6 +409,7 @@ export default function StoryPage() {
         intensity="medium"
         variant="scene"
         imageUrl={currentScene.background_image_url}
+        videoUrl={currentScene.video_url}
       />
 
       <div className="relative z-10 h-full flex flex-col">
