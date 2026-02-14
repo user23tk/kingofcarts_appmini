@@ -119,6 +119,7 @@ export function StoryGenerator() {
         isEvent: isEventMode,
         eventMultiplier: selectedEvent?.pp_multiplier || 1.0,
         eventEmoji: selectedEvent?.event_emoji || "",
+        saveToDb: saveLocation === "database",
       }
 
       const response = await fetch("/api/generate-chapter", {
@@ -134,27 +135,38 @@ export function StoryGenerator() {
         if (response.status === 401) {
           throw new Error("Non autorizzato. Effettua nuovamente il login.")
         }
-        throw new Error("Errore nella generazione del capitolo")
+        const errData = await response.json().catch(() => ({}))
+        throw new Error(errData.error || "Errore nella generazione del capitolo")
       }
 
-      // Handle streaming response
-      const reader = response.body?.getReader()
-      const decoder = new TextDecoder()
-      let fullResponse = ""
+      const data = await response.json()
 
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
+      // API returns { chapter, imageUrls, savedToDb, model, imageModel, ... }
+      // Extract chapter for display and validation
+      if (data.parseError) {
+        // AI returned unparseable JSON
+        setGeneratedContent(data.raw || "")
+        setValidationStatus("invalid")
+        setValidationError("L'AI ha generato JSON non valido. Modificalo manualmente.")
+      } else if (data.chapter) {
+        const chapterJson = JSON.stringify(data.chapter, null, 2)
+        setGeneratedContent(chapterJson)
+        validateContent(chapterJson)
 
-          const chunk = decoder.decode(value, { stream: true })
-          fullResponse += chunk
-          setGeneratedContent(fullResponse)
+        // Show additional info
+        if (data.savedToDb) {
+          console.log("[StoryGenerator] Capitolo salvato nel database!")
         }
-      }
-
-      if (fullResponse.trim()) {
-        validateContent(fullResponse)
+        if (data.dbError) {
+          setError(`Generato con successo, ma errore DB: ${data.dbError}`)
+        }
+        if (Object.keys(data.imageUrls || {}).length > 0) {
+          console.log("[StoryGenerator] Immagini generate:", data.imageUrls)
+        }
+      } else {
+        setGeneratedContent(JSON.stringify(data, null, 2))
+        setValidationStatus("invalid")
+        setValidationError("Risposta API inaspettata: manca il campo 'chapter'")
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore sconosciuto")
@@ -162,6 +174,7 @@ export function StoryGenerator() {
     } finally {
       setIsGenerating(false)
     }
+
   }
 
   const handleSave = async () => {
@@ -459,7 +472,7 @@ export function StoryGenerator() {
             <strong>8 scene indicizzate 0-7:</strong>
           </p>
           <p>• Scene 0, 2, 4, 6: Solo testo narrativo (intermezzi)</p>
-          <p>• Scene 1, 3, 5, 7: Testo + 2 scelte (A/B) con pp_delta ∈ {(3, 4, 5, 6)}</p>
+          <p>• Scene 1, 3, 5, 7: Testo + 2 scelte (A/B) con pp_delta ∈ {"{ 3, 4, 5, 6 }"}</p>
           <p>• Goto logic: scene 1/3/5 → scena successiva, scena 7 → goto: -1</p>
           <p>• Finale con testo + nextChapter</p>
           <p>• Validazione Zod automatica per garantire la struttura corretta</p>

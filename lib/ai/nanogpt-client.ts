@@ -18,7 +18,7 @@ export function getChatModel(): string {
     return process.env.NANOGPT_CHAT_MODEL || "chatgpt-4o-latest"
 }
 export function getImageModel(): string {
-    return process.env.NANOGPT_IMAGE_MODEL || "flux"
+    return process.env.NANOGPT_IMAGE_MODEL || "flux-2-flash"
 }
 export function getVideoModel(): string {
     return process.env.NANOGPT_VIDEO_MODEL || "kling"
