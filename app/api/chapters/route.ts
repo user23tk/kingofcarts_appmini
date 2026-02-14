@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createAdminClient } from "@/lib/supabase/admin"
+import { createAdminClient } from "@/lib/supabase/admin-singleton"
 import { validateChapterStructure } from "@/lib/schemas/chapter-schema"
 
 export const dynamic = "force-dynamic"

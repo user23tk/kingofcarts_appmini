@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createAdminClient } from "@/lib/supabase/admin"
+import { createAdminClient } from "@/lib/supabase/admin-singleton"
 import { EventManager } from "@/lib/story/event-manager"
 import { MiniAppSecurity } from "@/lib/security/miniapp-security"
 import { QueryCache } from "@/lib/cache/query-cache"

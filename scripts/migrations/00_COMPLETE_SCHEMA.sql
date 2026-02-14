@@ -809,33 +809,68 @@ BEGIN
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-- -   M i g r a t i o n :   A d d   d e a c t i v a t e _ e x p i r e d _ g i v e a w a y s   R P C  
- - -   D a t e :   2 0 2 6 - 0 2 - 0 7  
-  
- C R E A T E   O R   R E P L A C E   F U N C T I O N   d e a c t i v a t e _ e x p i r e d _ g i v e a w a y s ( )  
- R E T U R N S   I N T E G E R  
- L A N G U A G E   p l p g s q l  
- S E C U R I T Y   D E F I N E R  
- A S   $ $  
- D E C L A R E  
-         v _ c o u n t   I N T E G E R ;  
- B E G I N  
-         W I T H   d e a c t i v a t e d   A S   (  
-                 U P D A T E   g i v e a w a y s  
-                 S E T   i s _ a c t i v e   =   f a l s e  
-                 W H E R E   i s _ a c t i v e   =   t r u e  
-                     A N D   e n d s _ a t   <   N O W ( )  
-                 R E T U R N I N G   i d  
-         )  
-         S E L E C T   C O U N T ( * )   I N T O   v _ c o u n t   F R O M   d e a c t i v a t e d ;  
-  
-         - -   L o g   i f   a n y   g i v e a w a y s   w e r e   d e a c t i v a t e d  
-         I F   v _ c o u n t   >   0   T H E N  
-                 I N S E R T   I N T O   a u d i t _ l o g s   ( l e v e l ,   c o n t e x t ,   m e s s a g e ,   m e t a d a t a )  
-                 V A L U E S   ( ' i n f o ' ,   ' c r o n - g i v e a w a y s ' ,   ' D e a c t i v a t e d   e x p i r e d   g i v e a w a y s ' ,   j s o n b _ b u i l d _ o b j e c t ( ' c o u n t ' ,   v _ c o u n t ) ) ;  
-         E N D   I F ;  
-  
-         R E T U R N   v _ c o u n t ;  
- E N D ;  
- $ $ ;  
+
+-- ==============================================================================
+-- END OF SCHEMA
+-- Version: 4.5.0 - Consolidated February 2026
+-- ==============================================================================
+
+- -   M i g r a t i o n :   A d d   d e a c t i v a t e _ e x p i r e d _ g i v e a w a y s   R P C 
+ 
+ - -   D a t e :   2 0 2 6 - 0 2 - 0 7 
+ 
+ 
+ 
+ C R E A T E   O R   R E P L A C E   F U N C T I O N   d e a c t i v a t e _ e x p i r e d _ g i v e a w a y s ( ) 
+ 
+ R E T U R N S   I N T E G E R 
+ 
+ L A N G U A G E   p l p g s q l 
+ 
+ S E C U R I T Y   D E F I N E R 
+ 
+ A S   $ $ 
+ 
+ D E C L A R E 
+ 
+         v _ c o u n t   I N T E G E R ; 
+ 
+ B E G I N 
+ 
+         W I T H   d e a c t i v a t e d   A S   ( 
+ 
+                 U P D A T E   g i v e a w a y s 
+ 
+                 S E T   i s _ a c t i v e   =   f a l s e 
+ 
+                 W H E R E   i s _ a c t i v e   =   t r u e 
+ 
+                     A N D   e n d s _ a t   <   N O W ( ) 
+ 
+                 R E T U R N I N G   i d 
+ 
+         ) 
+ 
+         S E L E C T   C O U N T ( * )   I N T O   v _ c o u n t   F R O M   d e a c t i v a t e d ; 
+ 
+ 
+ 
+         - -   L o g   i f   a n y   g i v e a w a y s   w e r e   d e a c t i v a t e d 
+ 
+         I F   v _ c o u n t   >   0   T H E N 
+ 
+                 I N S E R T   I N T O   a u d i t _ l o g s   ( l e v e l ,   c o n t e x t ,   m e s s a g e ,   m e t a d a t a ) 
+ 
+                 V A L U E S   ( ' i n f o ' ,   ' c r o n - g i v e a w a y s ' ,   ' D e a c t i v a t e d   e x p i r e d   g i v e a w a y s ' ,   j s o n b _ b u i l d _ o b j e c t ( ' c o u n t ' ,   v _ c o u n t ) ) ; 
+ 
+         E N D   I F ; 
+ 
+ 
+ 
+         R E T U R N   v _ c o u n t ; 
+ 
+ E N D ; 
+ 
+ $ $ ; 
+ 
  

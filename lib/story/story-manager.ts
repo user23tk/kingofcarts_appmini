@@ -1,4 +1,4 @@
-import { createAdminClient } from "@/lib/supabase/admin"
+import { createAdminClient } from "@/lib/supabase/admin-singleton"
 import { PPValidator } from "@/lib/security/pp-validator"
 import { QueryCache } from "@/lib/cache/query-cache"
 import { EventManager } from "@/lib/story/event-manager"

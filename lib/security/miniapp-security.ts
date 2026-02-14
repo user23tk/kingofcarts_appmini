@@ -1,4 +1,4 @@
-import { createAdminClient } from "@/lib/supabase/admin"
+import { createAdminClient } from "@/lib/supabase/admin-singleton"
 import { MiniAppRateLimiter } from "@/lib/miniapp/rate-limit-handler"
 
 export interface SecurityValidation {
@@ -151,11 +151,11 @@ export class MiniAppSecurity {
     const rateLimitResult = await this.checkRateLimit(requestedUserId, shouldCount)
     if (!rateLimitResult.allowed) {
       // Detect if it's a burst limit (short wait time, typically < 2 minutes)
-      const isBurst = rateLimitResult.reason?.includes("Troppo veloce") || 
-                      rateLimitResult.reason?.includes("secondi") ||
-                      (rateLimitResult.resetTime && 
-                       (rateLimitResult.resetTime.getTime() - Date.now()) < 120000)
-      
+      const isBurst = rateLimitResult.reason?.includes("Troppo veloce") ||
+        rateLimitResult.reason?.includes("secondi") ||
+        (rateLimitResult.resetTime &&
+          (rateLimitResult.resetTime.getTime() - Date.now()) < 120000)
+
       return {
         success: false,
         error: rateLimitResult.reason || "Rate limit exceeded",

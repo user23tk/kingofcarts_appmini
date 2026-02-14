@@ -1,5 +1,0 @@
--- ============================================================================
--- COMPLETE DATABASE FIX AND CONSOLIDATION
--- This script fixes all database inconsistencies and ensures clean state
--- Run this on a fresh Supabase instance or to repair existing database
--- ============================================================================

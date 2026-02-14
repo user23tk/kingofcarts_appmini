@@ -1,4 +1,4 @@
-import { createAdminClient } from "@/lib/supabase/admin"
+import { createAdminClient } from "@/lib/supabase/admin-singleton"
 
 /** Rappresenta un evento/contest attivo */
 export interface ActiveEvent {
