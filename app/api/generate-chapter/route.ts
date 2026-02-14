@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 import { requireDebugAuth } from "@/lib/security/debug-auth"
-import { chatCompletion, generateImage, getChatModel, getImageModel } from "@/lib/ai/nanogpt-client"
+import { chatCompletion, generateImage, generateVideo, getChatModel, getImageModel, getVideoModel } from "@/lib/ai/nanogpt-client"
 import { createAdminClient } from "@/lib/supabase/admin-singleton"
 
 export const dynamic = "force-dynamic"
@@ -107,20 +107,41 @@ GENERA IL CAPITOLO SEGUENDO ESATTAMENTE QUESTA STRUTTURA.`
 
     // Generate images for each scene if requested
     const imageUrls: Record<number, string> = {}
+    let videoUrl: string | null = null
+
     if (parsed.scenes) {
-      const imagePromises = parsed.scenes.map(async (scene: { index: number; image_prompt?: string }) => {
-        if (!scene.image_prompt) return
-        try {
-          const imgResult = await generateImage({
-            model: getImageModel(),
-            prompt: `${scene.image_prompt}, digital art, vibrant colors, fantasy game style, high quality`,
-            size: "1024x1024",
-          })
-          if (imgResult.data?.[0]?.url) {
-            imageUrls[scene.index] = imgResult.data[0].url
+      const imagePromises = parsed.scenes.map(async (scene: { index: number; image_prompt?: string; video_prompt?: string }) => {
+        // Image Generation
+        if (scene.image_prompt) {
+          try {
+            const imgResult = await generateImage({
+              model: getImageModel(),
+              prompt: `${scene.image_prompt}, digital art, vibrant colors, fantasy game style, high quality`,
+              size: "1024x1024",
+            })
+            if (imgResult.data?.[0]?.url) {
+              imageUrls[scene.index] = imgResult.data[0].url
+            }
+          } catch (e) {
+            console.error(`[generate-chapter] Image gen failed for scene ${scene.index}:`, e)
           }
-        } catch (e) {
-          console.error(`[generate-chapter] Image gen failed for scene ${scene.index}:`, e)
+        }
+
+        // Video Generation (only for scene 6 or where video_prompt exists)
+        if (scene.video_prompt && scene.index === 6) {
+          try {
+            const vUrl = await generateVideo({
+              model: getVideoModel(),
+              prompt: `${scene.video_prompt}, cinematic, 4k, epic fantasy`,
+              duration: 5
+            })
+            if (vUrl) {
+              videoUrl = vUrl
+              console.log(`[generate-chapter] Video generated for scene ${scene.index}:`, vUrl)
+            }
+          } catch (e) {
+            console.error(`[generate-chapter] Video gen failed for scene ${scene.index}:`, e)
+          }
         }
       })
       await Promise.all(imagePromises)

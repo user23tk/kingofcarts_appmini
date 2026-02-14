@@ -14,6 +14,8 @@ export interface StoryScene {
   index: number
   text: string
   choices: StoryChoice[]
+  background_image_url?: string | null
+  video_url?: string | null
 }
 
 export interface StoryFinale {

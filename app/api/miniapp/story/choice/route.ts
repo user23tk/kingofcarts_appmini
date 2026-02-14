@@ -347,6 +347,7 @@ export async function POST(request: NextRequest) {
           progress?.total_pp,
         ),
         choices: nextScene.choices || null,
+        background_image_url: nextScene.background_image_url,
       },
       ppEarned: ppDelta,
       sessionPP: updatedSession.ppAccumulated,

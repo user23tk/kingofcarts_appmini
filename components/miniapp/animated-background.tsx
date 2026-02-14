@@ -7,6 +7,7 @@ interface AnimatedBackgroundProps {
   theme: ThemeName
   intensity?: "low" | "medium" | "high"
   variant?: "scene" | "menu"
+  imageUrl?: string | null
 }
 
 const clampOpacity = (value: number): number => {
@@ -53,7 +54,7 @@ const hexToRgba = (hex: string, alpha: number): string => {
   return `rgba(${r}, ${g}, ${b}, ${clampedAlpha})`
 }
 
-export function AnimatedBackground({ theme, intensity = "medium", variant = "scene" }: AnimatedBackgroundProps) {
+export function AnimatedBackground({ theme, intensity = "medium", variant = "scene", imageUrl }: AnimatedBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const colors = getThemeColors(theme)
 
@@ -131,13 +132,25 @@ export function AnimatedBackground({ theme, intensity = "medium", variant = "sce
 
   return (
     <div className="fixed inset-0 -z-10 overflow-hidden">
-      {/* Base gradient layer */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: `linear-gradient(135deg, ${hexToRgba(colors.primary, 0.08)}, ${hexToRgba(colors.light, 0.08)})`,
-        }}
-      />
+      {/* Base gradient layer OR Custom Image */}
+      {imageUrl ? (
+        <div className="absolute inset-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imageUrl}
+            alt="Scene background"
+            className="w-full h-full object-cover opacity-60"
+          />
+          <div className="absolute inset-0 bg-black/40" /> {/* Overlay for readability */}
+        </div>
+      ) : (
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `linear-gradient(135deg, ${hexToRgba(colors.primary, 0.08)}, ${hexToRgba(colors.light, 0.08)})`,
+          }}
+        />
+      )}
 
       {/* Animated gradient orbs */}
       <div className="absolute inset-0">

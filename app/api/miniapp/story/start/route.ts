@@ -158,6 +158,7 @@ export async function POST(request: NextRequest) {
           progress.total_pp || 0,
         ),
         choices: firstScene.choices || null,
+        background_image_url: firstScene.background_image_url,
       },
       sessionPP: 0,
       totalPP: progress.total_pp || 0,

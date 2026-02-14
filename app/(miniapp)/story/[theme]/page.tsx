@@ -389,13 +389,25 @@ export default function StoryPage() {
     )
   }
 
+  interface Scene {
+    index: number
+    text: string
+    choices: Choice[] | null
+    background_image_url?: string | null
+  }
+
   if (!currentScene) {
     return null
   }
 
   return (
     <div className="fixed inset-0 overflow-hidden" style={{ paddingTop: "calc(var(--total-safe-top, 0px) + 92px)" }}>
-      <AnimatedBackground theme={theme} intensity="medium" variant="scene" />
+      <AnimatedBackground
+        theme={theme as any} // Cast to any or ThemeName to fix type error
+        intensity="medium"
+        variant="scene"
+        imageUrl={currentScene.background_image_url}
+      />
 
       <div className="relative z-10 h-full flex flex-col">
         {/* Progress Bar */}
