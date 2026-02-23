@@ -107,34 +107,56 @@ async function generateChapterContent(
     chapterNumber: number
 ): Promise<GeneratedChapterContent | null> {
     const systemPrompt = `Sei un creatore di storie interattive per il bot Telegram "King of Carts".
-Devi generare un nuovo capitolo per il tema "${theme}" seguendo ESATTAMENTE questa struttura:
+Devi generare un nuovo capitolo per il tema "${theme}" seguendo ESATTAMENTE questa struttura JSON.
 
-STRUTTURA RIGIDA OBBLIGATORIA:
-- 8 scene indicizzate 0-7
-- Scene 0, 2, 4, 6: SOLO testo narrativo (intermezzi senza scelte)
-- Scene 1, 3, 5, 7: testo + 2 scelte (A/B) con pp_delta ∈ {3,4,5,6}
-- Goto logic: scene 1/3/5 → scena successiva (2/4/6), scena 7 → goto: -1
-- Finale con testo + nextChapter
+STRUTTURA JSON OBBLIGATORIA — segui ESATTAMENTE questo schema:
+{
+  "id": "${theme}_${chapterNumber}",
+  "title": "Titolo del Capitolo",
+  "scenes": [
+    {"index": 0, "text": "testo narrativo...", "image_prompt": "english image description"},
+    {"index": 1, "text": "testo con scelta...", "image_prompt": "...", "choices": [
+      {"id": "1a", "label": "Scelta A", "pp_delta": 5, "goto": 2},
+      {"id": "1b", "label": "Scelta B", "pp_delta": 3, "goto": 2}
+    ]},
+    {"index": 2, "text": "testo narrativo...", "image_prompt": "..."},
+    {"index": 3, "text": "testo con scelta...", "image_prompt": "...", "choices": [
+      {"id": "3a", "label": "Scelta A", "pp_delta": 4, "goto": 4},
+      {"id": "3b", "label": "Scelta B", "pp_delta": 6, "goto": 4}
+    ]},
+    {"index": 4, "text": "testo narrativo...", "image_prompt": "..."},
+    {"index": 5, "text": "testo con scelta...", "image_prompt": "...", "choices": [
+      {"id": "5a", "label": "Scelta A", "pp_delta": 3, "goto": 6},
+      {"id": "5b", "label": "Scelta B", "pp_delta": 5, "goto": 6}
+    ]},
+    {"index": 6, "text": "testo narrativo...", "image_prompt": "..."},
+    {"index": 7, "text": "testo con scelta...", "image_prompt": "...", "choices": [
+      {"id": "7a", "label": "Scelta A", "pp_delta": 4, "goto": -1},
+      {"id": "7b", "label": "Scelta B", "pp_delta": 6, "goto": -1}
+    ]}
+  ],
+  "finale": {"text": "testo finale...", "nextChapter": "${theme}_${chapterNumber + 1}"}
+}
 
-REGOLE SCELTE:
-- Ogni scelta deve avere pp_delta tra 3-6 (SOLO valori positivi: 3, 4, 5, o 6)
-- Scene 1, 3, 5: goto deve puntare alla scena successiva (2, 4, 6)
-- Scena 7: goto deve essere -1 (indica finale)
+REGOLE IMPORTANTI:
+- Scene 0, 2, 4, 6: SOLO testo narrativo, NESSUN campo "choices"
+- Scene 1, 3, 5, 7: testo + ESATTAMENTE 2 scelte con pp_delta ∈ {3, 4, 5, 6}
+- Scene 1, 3, 5: goto punta alla scena successiva (2, 4, 6)
+- Scena 7: goto DEVE essere -1
+- Ogni scena DEVE avere il campo "index" con il numero corretto (0-7)
+- Ogni scena DEVE avere il campo "image_prompt" in inglese
 
 STILE:
 - Usa emoji e formattazione HTML <b>, <i>
-- Mantieni il tono psichedelico, positivo, filosofico del King of Carts
-- Usa i placeholder {{KING}}, {{PLAYER}}, {{TOTAL_PP}}, {{RANK}}, {{TITLE}}, {{THEME_CHAPTERS}}, {{THEME_EMOJI}}
-- Tono in seconda persona: parla direttamente al giocatore come "tu"
+- Tono psichedelico, positivo, filosofico del King of Carts
+- Placeholder: {{KING}}, {{PLAYER}}, {{TOTAL_PP}}, {{RANK}}, {{TITLE}}, {{THEME_CHAPTERS}}, {{THEME_EMOJI}}
+- Seconda persona: parla al giocatore come "tu"
 - Testi coinvolgenti e immersivi
 
-PER OGNI SCENA genera anche un campo "image_prompt" con una descrizione BREVE in inglese per generare un'immagine di sfondo della scena.
-
-Genera SOLO il JSON valido del capitolo, senza commenti, markdown o spiegazioni.`
+Genera SOLO il JSON valido, senza commenti, markdown o spiegazioni.`
 
     const userPrompt = `Genera il capitolo ${chapterNumber} per il tema "${theme}".
-Il JSON deve contenere: id, title, scenes (8), finale.
-Rispondi SOLO con JSON valido.`
+Rispondi con SOLO il JSON valido seguendo esattamente lo schema fornito. Non aggiungere nulla prima o dopo il JSON.`
 
     try {
         const result = await chatCompletion({
@@ -144,7 +166,7 @@ Rispondi SOLO con JSON valido.`
                 { role: "user", content: userPrompt },
             ],
             temperature: 0.7,
-            maxTokens: 4000,
+            maxTokens: 6000,
         })
 
         const content = result.choices?.[0]?.message?.content
