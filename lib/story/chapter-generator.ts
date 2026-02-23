@@ -109,49 +109,88 @@ async function generateChapterContent(
     const systemPrompt = `Sei un creatore di storie interattive per il bot Telegram "King of Carts".
 Devi generare un nuovo capitolo per il tema "${theme}" seguendo ESATTAMENTE questa struttura JSON.
 
-STRUTTURA JSON OBBLIGATORIA — segui ESATTAMENTE questo schema:
+ESEMPIO STRUTTURA JSON OBBLIGATORIA:
 {
   "id": "${theme}_${chapterNumber}",
-  "title": "Titolo del Capitolo",
+  "title": "🎡 Titolo evocativo con emoji",
+  "finale": {
+    "text": "Testo finale con {{PLAYER}} e {{TOTAL_PP}}...",
+    "nextChapter": "${theme}_${chapterNumber + 1}"
+  },
   "scenes": [
-    {"index": 0, "text": "testo narrativo...", "image_prompt": "english image description"},
-    {"index": 1, "text": "testo con scelta...", "image_prompt": "...", "choices": [
-      {"id": "1a", "label": "Scelta A", "pp_delta": 5, "goto": 2},
-      {"id": "1b", "label": "Scelta B", "pp_delta": 3, "goto": 2}
-    ]},
-    {"index": 2, "text": "testo narrativo...", "image_prompt": "..."},
-    {"index": 3, "text": "testo con scelta...", "image_prompt": "...", "choices": [
-      {"id": "3a", "label": "Scelta A", "pp_delta": 4, "goto": 4},
-      {"id": "3b", "label": "Scelta B", "pp_delta": 6, "goto": 4}
-    ]},
-    {"index": 4, "text": "testo narrativo...", "image_prompt": "..."},
-    {"index": 5, "text": "testo con scelta...", "image_prompt": "...", "choices": [
-      {"id": "5a", "label": "Scelta A", "pp_delta": 3, "goto": 6},
-      {"id": "5b", "label": "Scelta B", "pp_delta": 5, "goto": 6}
-    ]},
-    {"index": 6, "text": "testo narrativo...", "image_prompt": "..."},
-    {"index": 7, "text": "testo con scelta...", "image_prompt": "...", "choices": [
-      {"id": "7a", "label": "Scelta A", "pp_delta": 4, "goto": -1},
-      {"id": "7b", "label": "Scelta B", "pp_delta": 6, "goto": -1}
-    ]}
-  ],
-  "finale": {"text": "testo finale...", "nextChapter": "${theme}_${chapterNumber + 1}"}
+    {
+      "text": "Testo narrativo lungo e coinvolgente con {{PLAYER}} e emoji... 🌌",
+      "index": 0,
+      "image_prompt": "English description for background image generation"
+    },
+    {
+      "text": "Testo che introduce una scelta con {{PLAYER}}...",
+      "index": 1,
+      "image_prompt": "English description for background image",
+      "choices": [
+        {"id": "A", "goto": 2, "label": "Prima scelta con emoji 🌟", "pp_delta": 5},
+        {"id": "B", "goto": 2, "label": "Seconda scelta con emoji ⚡", "pp_delta": 3}
+      ]
+    },
+    {
+      "text": "Testo narrativo intermezzo... 🫂",
+      "index": 2,
+      "image_prompt": "English description"
+    },
+    {
+      "text": "Testo che introduce una scelta...",
+      "index": 3,
+      "image_prompt": "English description",
+      "choices": [
+        {"id": "A", "goto": 4, "label": "Scelta A 💃", "pp_delta": 6},
+        {"id": "B", "goto": 4, "label": "Scelta B ☔", "pp_delta": 4}
+      ]
+    },
+    {
+      "text": "Testo narrativo con {{KING}}... ✨",
+      "index": 4,
+      "image_prompt": "English description"
+    },
+    {
+      "text": "Testo che introduce una scelta...",
+      "index": 5,
+      "image_prompt": "English description",
+      "choices": [
+        {"id": "A", "goto": 6, "label": "Scelta A 🪞", "pp_delta": 3},
+        {"id": "B", "goto": 6, "label": "Scelta B 😊", "pp_delta": 4}
+      ]
+    },
+    {
+      "text": "Testo narrativo intermezzo... 🎟️",
+      "index": 6,
+      "image_prompt": "English description"
+    },
+    {
+      "text": "Testo che introduce l'ultima scelta...",
+      "index": 7,
+      "image_prompt": "English description",
+      "choices": [
+        {"id": "A", "goto": -1, "label": "Scelta finale A 🎫", "pp_delta": 6},
+        {"id": "B", "goto": -1, "label": "Scelta finale B 🎁", "pp_delta": 5}
+      ]
+    }
+  ]
 }
 
 REGOLE IMPORTANTI:
 - Scene 0, 2, 4, 6: SOLO testo narrativo, NESSUN campo "choices"
-- Scene 1, 3, 5, 7: testo + ESATTAMENTE 2 scelte con pp_delta ∈ {3, 4, 5, 6}
+- Scene 1, 3, 5, 7: testo + ESATTAMENTE 2 scelte (id "A" e "B") con pp_delta ∈ {3, 4, 5, 6}
 - Scene 1, 3, 5: goto punta alla scena successiva (2, 4, 6)
 - Scena 7: goto DEVE essere -1
-- Ogni scena DEVE avere il campo "index" con il numero corretto (0-7)
-- Ogni scena DEVE avere il campo "image_prompt" in inglese
+- Ogni scena DEVE avere i campi "text", "index" (0-7) e "image_prompt" (in inglese)
+- Le scelte hanno SEMPRE id "A" e "B"
 
 STILE:
 - Usa emoji e formattazione HTML <b>, <i>
 - Tono psichedelico, positivo, filosofico del King of Carts
 - Placeholder: {{KING}}, {{PLAYER}}, {{TOTAL_PP}}, {{RANK}}, {{TITLE}}, {{THEME_CHAPTERS}}, {{THEME_EMOJI}}
 - Seconda persona: parla al giocatore come "tu"
-- Testi coinvolgenti e immersivi
+- Testi lunghi, coinvolgenti e immersivi (almeno 3-4 frasi per scena)
 
 Genera SOLO il JSON valido, senza commenti, markdown o spiegazioni.`
 
