@@ -5,12 +5,13 @@ export const ChoiceSchema = z.object({
   id: z.enum(["A", "B", "C"]),
   label: z.string().min(1, "Label non può essere vuota"),
   pp_delta: z.number().int().min(GAME_CONSTANTS.PP_MIN).max(GAME_CONSTANTS.PP_MAX),
-  goto: z.number().int().min(-1).optional(),
+  goto: z.number().int().min(-1),
 })
 
 export const SceneSchema = z.object({
   index: z.number().int().min(GAME_CONSTANTS.SCENE_MIN_INDEX).max(GAME_CONSTANTS.SCENE_FINAL_INDEX),
   text: z.string().min(1, "Testo scena non può essere vuoto"),
+  image_prompt: z.string().optional(),
   choices: z.array(ChoiceSchema).optional(),
 })
 

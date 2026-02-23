@@ -247,6 +247,19 @@ function validateChapterStructure(chapter: GeneratedChapterContent): boolean {
         return false
     }
 
+    // Validate all scenes have index and image_prompt
+    for (let i = 0; i < 8; i++) {
+        const scene = chapter.scenes.find((s) => s.index === i)
+        if (!scene) {
+            console.error(`[ChapterGenerator] Missing scene with index ${i}`)
+            return false
+        }
+        if (!scene.image_prompt) {
+            console.error(`[ChapterGenerator] Scene ${i} missing image_prompt`)
+            return false
+        }
+    }
+
     // Validate choice scenes (1, 3, 5, 7)
     for (const sceneIndex of [1, 3, 5, 7]) {
         const scene = chapter.scenes.find((s) => s.index === sceneIndex)
@@ -255,9 +268,14 @@ function validateChapterStructure(chapter: GeneratedChapterContent): boolean {
             return false
         }
 
+        const expectedGoto = sceneIndex === 7 ? -1 : sceneIndex + 1
         for (const choice of scene.choices) {
             if (!VALID_PP_VALUES.includes(choice.pp_delta)) {
                 console.error(`[ChapterGenerator] Invalid pp_delta ${choice.pp_delta} in scene ${sceneIndex}`)
+                return false
+            }
+            if (choice.goto !== expectedGoto) {
+                console.error(`[ChapterGenerator] Scene ${sceneIndex} choice goto must be ${expectedGoto}, got ${choice.goto}`)
                 return false
             }
         }
