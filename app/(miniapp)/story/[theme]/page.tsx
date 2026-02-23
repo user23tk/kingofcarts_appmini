@@ -395,7 +395,6 @@ export default function StoryPage() {
     text: string
     choices: Choice[] | null
     background_image_url?: string | null
-    video_url?: string | null
   }
 
   if (!currentScene) {
@@ -409,7 +408,6 @@ export default function StoryPage() {
         intensity="medium"
         variant="scene"
         imageUrl={currentScene.background_image_url}
-        videoUrl={currentScene.video_url}
       />
 
       <div className="relative z-10 h-full flex flex-col">

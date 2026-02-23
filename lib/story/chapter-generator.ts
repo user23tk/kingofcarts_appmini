@@ -1,16 +1,16 @@
 /**
  * ChapterGenerator — Genera capitoli dinamici con NanoGPT
- * - Rate limit: 5 capitoli/giorno/tema
+ * - Rate limit: 5 capitoli/giorno TOTALI (cross-tema)
  * - Lock per evitare generazione concorrente
- * - Genera immagini per ogni scena + video per scena 6
+ * - Genera immagini di background per ogni scena
  */
 
 import { createAdminClient } from "@/lib/supabase/admin-singleton"
-import { chatCompletion, generateImage, generateVideo, getChatModel, getImageModel, getVideoModel } from "@/lib/ai/nanogpt-client"
+import { chatCompletion, generateImage, getChatModel, getImageModel } from "@/lib/ai/nanogpt-client"
 import { QueryCache } from "@/lib/cache/query-cache"
 import type { StoryChapter } from "./story-manager"
 
-const MAX_CHAPTERS_PER_DAY_PER_THEME = 5
+const MAX_CHAPTERS_PER_DAY = 5
 const LOCK_TIMEOUT_MS = 120_000 // 2 minutes
 const VALID_PP_VALUES = [3, 4, 5, 6]
 
@@ -18,7 +18,6 @@ interface GeneratedScene {
     index: number
     text: string
     image_prompt: string
-    video_prompt?: string
     choices?: Array<{
         id: string
         label: string
@@ -39,16 +38,16 @@ interface GeneratedChapterContent {
 
 // ─── Rate Limit Check ───────────────────────────────────────────────
 
-async function checkDailyLimit(theme: string): Promise<{ allowed: boolean; remaining: number }> {
+async function checkDailyLimit(): Promise<{ allowed: boolean; remaining: number }> {
     const supabase = createAdminClient()
 
     const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)
 
+    // Conta TUTTI i capitoli generati oggi (cross-tema)
     const { count, error } = await supabase
         .from("chapter_generation_daily")
         .select("*", { count: "exact", head: true })
-        .eq("theme", theme)
         .gte("generated_at", todayStart.toISOString())
 
     if (error) {
@@ -57,7 +56,7 @@ async function checkDailyLimit(theme: string): Promise<{ allowed: boolean; remai
     }
 
     const used = count || 0
-    const remaining = Math.max(0, MAX_CHAPTERS_PER_DAY_PER_THEME - used)
+    const remaining = Math.max(0, MAX_CHAPTERS_PER_DAY - used)
 
     return { allowed: remaining > 0, remaining }
 }
@@ -130,7 +129,6 @@ STILE:
 - Testi coinvolgenti e immersivi
 
 PER OGNI SCENA genera anche un campo "image_prompt" con una descrizione BREVE in inglese per generare un'immagine di sfondo della scena.
-Per la scena 6 (penultimo intermezzo) aggiungi ANCHE un campo "video_prompt" con una descrizione breve per un video drammatico di 5 secondi con testo scritto.
 
 Genera SOLO il JSON valido del capitolo, senza commenti, markdown o spiegazioni.`
 
@@ -220,11 +218,10 @@ function validateChapterStructure(chapter: GeneratedChapterContent): boolean {
 
 async function generateSceneMedia(
     scenes: GeneratedScene[]
-): Promise<{ imageUrls: Record<number, string>; videoUrl: string | null }> {
+): Promise<Record<number, string>> {
     const imageUrls: Record<number, string> = {}
-    let videoUrl: string | null = null
 
-    // Generate images for all scenes in parallel
+    // Generate background images for all scenes in parallel
     const imagePromises = scenes.map(async (scene) => {
         if (!scene.image_prompt) return
 
@@ -238,6 +235,8 @@ async function generateSceneMedia(
             if (result.data?.[0]?.url) {
                 imageUrls[scene.index] = result.data[0].url
                 console.log(`[ChapterGenerator] Image generated for scene ${scene.index}`)
+            } else {
+                console.warn(`[ChapterGenerator] structured response OK but no URL for scene ${scene.index}`, result)
             }
         } catch (error) {
             console.error(`[ChapterGenerator] Image generation failed for scene ${scene.index}:`, error)
@@ -246,24 +245,7 @@ async function generateSceneMedia(
 
     await Promise.all(imagePromises)
 
-    // Generate video for scene 6 if prompt exists
-    const scene6 = scenes.find((s) => s.index === 6)
-    if (scene6?.video_prompt) {
-        try {
-            videoUrl = await generateVideo({
-                prompt: scene6.video_prompt,
-                duration: 5,
-                model: getVideoModel(),
-            })
-            if (videoUrl) {
-                console.log(`[ChapterGenerator] Video generated for scene 6: ${videoUrl}`)
-            }
-        } catch (error) {
-            console.error("[ChapterGenerator] Video generation failed:", error)
-        }
-    }
-
-    return { imageUrls, videoUrl }
+    return imageUrls
 }
 
 // ─── Save to Database ───────────────────────────────────────────────
@@ -272,8 +254,7 @@ async function saveChapterToDatabase(
     theme: string,
     chapterNumber: number,
     chapter: GeneratedChapterContent,
-    imageUrls: Record<number, string>,
-    videoUrl: string | null
+    imageUrls: Record<number, string>
 ): Promise<boolean> {
     const supabase = createAdminClient()
 
@@ -289,7 +270,7 @@ async function saveChapterToDatabase(
         return false
     }
 
-    // Build content with embedded media URLs
+    // Build content with embedded background image URLs
     const contentWithMedia = {
         scenes: chapter.scenes.map((scene) => ({
             index: scene.index,
@@ -301,7 +282,6 @@ async function saveChapterToDatabase(
                 goto: c.goto,
             })),
             background_image_url: imageUrls[scene.index] || null,
-            video_url: scene.index === 6 ? videoUrl : null,
         })),
         finale: chapter.finale,
     }
@@ -348,10 +328,10 @@ export async function generateChapter(
 ): Promise<StoryChapter | null> {
     console.log(`[ChapterGenerator] Generating chapter ${chapterNumber} for theme ${theme}`)
 
-    // 1. Check daily rate limit
-    const { allowed, remaining } = await checkDailyLimit(theme)
+    // 1. Check global daily rate limit (5 chapters/day across all themes)
+    const { allowed, remaining } = await checkDailyLimit()
     if (!allowed) {
-        console.log(`[ChapterGenerator] Daily limit reached for theme ${theme}`)
+        console.log(`[ChapterGenerator] Global daily limit reached`)
         return null
     }
 
@@ -370,11 +350,11 @@ export async function generateChapter(
             return null
         }
 
-        // 4. Generate media (images + video) in parallel
-        const { imageUrls, videoUrl } = await generateSceneMedia(chapterContent.scenes)
+        // 4. Generate background images for all scenes in parallel
+        const imageUrls = await generateSceneMedia(chapterContent.scenes)
 
         // 5. Save to database
-        const saved = await saveChapterToDatabase(theme, chapterNumber, chapterContent, imageUrls, videoUrl)
+        const saved = await saveChapterToDatabase(theme, chapterNumber, chapterContent, imageUrls)
         if (!saved) {
             console.error("[ChapterGenerator] Failed to save chapter")
             return null
@@ -382,7 +362,7 @@ export async function generateChapter(
 
         console.log(`[ChapterGenerator] Chapter ${chapterNumber} for ${theme} generated (${remaining - 1} remaining today)`)
 
-        // 6. Return as StoryChapter
+        // 6. Return as StoryChapter with image URLs
         return {
             id: chapterContent.id,
             title: chapterContent.title,
@@ -394,6 +374,7 @@ export async function generateChapter(
                     label: c.label,
                     pp_delta: c.pp_delta,
                 })) || [],
+                background_image_url: imageUrls[s.index] || null,
             })),
             finale: {
                 text: chapterContent.finale.text,
@@ -407,7 +388,7 @@ export async function generateChapter(
 }
 
 /**
- * Check if a theme has reached its daily generation limit.
+ * Check if the global daily generation limit has been reached.
  * Returns { allowed, remaining, message }.
  */
 export async function getDailyLimitStatus(theme: string): Promise<{
@@ -415,13 +396,13 @@ export async function getDailyLimitStatus(theme: string): Promise<{
     remaining: number
     message: string
 }> {
-    const { allowed, remaining } = await checkDailyLimit(theme)
+    const { allowed, remaining } = await checkDailyLimit()
 
     return {
         allowed,
         remaining,
         message: allowed
-            ? `Puoi generare ancora ${remaining} capitoli oggi per questo tema.`
-            : `Hai raggiunto il limite di ${MAX_CHAPTERS_PER_DAY_PER_THEME} capitoli generati oggi per questo tema. Riprova domani!`,
+            ? `Puoi generare ancora ${remaining} capitoli oggi.`
+            : `Hai raggiunto il limite di ${MAX_CHAPTERS_PER_DAY} capitoli generati oggi. Riprova domani!`,
     }
 }

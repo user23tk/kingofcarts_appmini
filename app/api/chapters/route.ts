@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { requireDebugAuth } from "@/lib/security/debug-auth"
 import { createAdminClient } from "@/lib/supabase/admin-singleton"
 import { validateChapterStructure } from "@/lib/schemas/chapter-schema"
 
@@ -6,6 +7,11 @@ export const dynamic = "force-dynamic"
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireDebugAuth(request)
+    if (!auth.authorized) {
+      return auth.response!
+    }
+
     const { theme, chapterNumber, content } = await request.json()
 
     // Validate input
@@ -70,7 +76,7 @@ export async function POST(request: NextRequest) {
 
     const { data: existingChapter } = await supabase
       .from("story_chapters")
-      .select("id, title, chapter_number")
+      .select("id, title, chapter_number, version")
       .eq("theme_id", themeId)
       .eq("chapter_number", chapterNumber)
       .single()
@@ -129,6 +135,11 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireDebugAuth(request)
+    if (!auth.authorized) {
+      return auth.response!
+    }
+
     const { searchParams } = new URL(request.url)
     const theme = searchParams.get("theme")
 

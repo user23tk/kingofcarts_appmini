@@ -46,6 +46,7 @@ Thumbs.db
 
 # Debug
 *.log
+logs_debug/
 
 # Misc
 .turbo

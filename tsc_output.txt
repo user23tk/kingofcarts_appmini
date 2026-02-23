@@ -1,0 +1,67 @@
+app/(miniapp)/layout.tsx(82,24): error TS2322: Type '{ currentPath: string; }' is not assignable to type 'IntrinsicAttributes'.
+  Property 'currentPath' does not exist on type 'IntrinsicAttributes'.
+app/(miniapp)/leaderboard/page.tsx(229,61): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+app/(miniapp)/leaderboard/page.tsx(229,66): error TS7006: Parameter 'p' implicitly has an 'any' type.
+app/(miniapp)/leaderboard/page.tsx(305,54): error TS7006: Parameter 'entry' implicitly has an 'any' type.
+app/(miniapp)/leaderboard/page.tsx(305,61): error TS7006: Parameter 'index' implicitly has an 'any' type.
+app/api/debug/authenticate/route.ts(2,22): error TS7016: Could not find a declaration file for module 'jsonwebtoken'. 'C:/Users/jackot34/Downloads/kingofcarts_appmini/node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/jsonwebtoken` if it exists or add a new declaration (.d.ts) file containing `declare module 'jsonwebtoken';`
+app/api/debug/bot-status/route.ts(18,12): error TS2554: Expected 2-3 arguments, but got 1.
+app/api/debug/bot-status/route.ts(120,17): error TS2339: Property 'status' does not exist on type '{ timestamp: string; botInfo: { username: any; id: any; first_name: any; can_join_groups: any; can_read_all_group_messages: any; supports_inline_queries: any; }; webhook: { url: any; has_custom_certificate: any; ... 5 more ...; ip_address: any; }; ... 4 more ...; recommendations: string[]; }'.
+app/api/debug/bot-status/route.ts(124,60): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+app/api/debug/rate-limit-status/route.ts(24,12): error TS2554: Expected 2-3 arguments, but got 1.
+app/api/debug/rate-limit-status/route.ts(31,75): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+app/api/debug/user-validator/route.ts(59,37): error TS2551: Property 'chapters_completed' does not exist on type 'UserStats'. Did you mean 'chaptersCompleted'?
+app/api/debug/user-validator/route.ts(59,73): error TS2551: Property 'themes_completed' does not exist on type 'UserStats'. Did you mean 'themesCompleted'?
+app/api/debug/user-validator/route.ts(64,19): error TS2551: Property 'total_pp' does not exist on type 'UserStats'. Did you mean 'totalPp'?
+app/api/debug/user-validator/route.ts(66,43): error TS2551: Property 'total_pp' does not exist on type 'UserStats'. Did you mean 'totalPp'?
+app/api/debug/user-validator/route.ts(66,99): error TS2551: Property 'chapters_completed' does not exist on type 'UserStats'. Did you mean 'chaptersCompleted'?
+app/api/debug/user-validator/route.ts(66,147): error TS2551: Property 'themes_completed' does not exist on type 'UserStats'. Did you mean 'themesCompleted'?
+app/api/debug/user-validator/route.ts(70,19): error TS2551: Property 'total_pp' does not exist on type 'UserStats'. Did you mean 'totalPp'?
+app/api/debug/user-validator/route.ts(74,19): error TS2551: Property 'chapters_completed' does not exist on type 'UserStats'. Did you mean 'chaptersCompleted'?
+app/api/debug/user-validator/route.ts(74,50): error TS2551: Property 'themes_completed' does not exist on type 'UserStats'. Did you mean 'themesCompleted'?
+app/api/debug/user-validator/route.ts(86,27): error TS2551: Property 'user_id' does not exist on type 'UserStats'. Did you mean 'userId'?
+app/api/debug/user-validator/route.ts(87,31): error TS2339: Property 'telegram_id' does not exist on type 'UserStats'.
+app/api/debug/user-validator/route.ts(88,29): error TS2339: Property 'username' does not exist on type 'UserStats'.
+app/api/debug/user-validator/route.ts(91,28): error TS2551: Property 'total_pp' does not exist on type 'UserStats'. Did you mean 'totalPp'?
+app/api/debug/user-validator/route.ts(93,31): error TS2339: Property 'percentile' does not exist on type 'UserRank'.
+app/api/debug/user-validator/route.ts(95,33): error TS2551: Property 'total_pp' does not exist on type 'UserStats'. Did you mean 'totalPp'?
+app/api/debug/user-validator/route.ts(98,38): error TS2551: Property 'chapters_completed' does not exist on type 'UserStats'. Did you mean 'chaptersCompleted'?
+app/api/debug/user-validator/route.ts(99,36): error TS2551: Property 'themes_completed' does not exist on type 'UserStats'. Did you mean 'themesCompleted'?
+app/api/debug/user-validator/route.ts(105,32): error TS2339: Property 'last_active' does not exist on type 'UserStats'.
+app/api/debug/user-validator/route.ts(109,60): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+app/api/debug/users/route.ts(30,12): error TS2554: Expected 2-3 arguments, but got 1.
+app/api/debug/users/route.ts(34,48): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+app/api/debug/validate-stats/route.ts(25,83): error TS2345: Argument of type '{ ip: string; timestamp: string; }' is not assignable to parameter of type 'string'.
+app/api/debug/validate-stats/route.ts(46,72): error TS2345: Argument of type 'PostgrestError' is not assignable to parameter of type 'string'.
+app/api/debug/validate-stats/route.ts(75,35): error TS18046: 'sum' is of type 'unknown'.
+app/api/debug/validate-stats/route.ts(117,71): error TS2345: Argument of type 'PostgrestError' is not assignable to parameter of type 'string'.
+app/api/debug/validate-stats/route.ts(176,72): error TS2345: Argument of type 'PostgrestError' is not assignable to parameter of type 'string'.
+app/api/debug/validate-stats/route.ts(217,35): error TS18046: 'sum' is of type 'unknown'.
+app/api/debug/validate-stats/route.ts(243,83): error TS2345: Argument of type 'PostgrestError' is not assignable to parameter of type 'string'.
+app/api/debug/validate-stats/route.ts(285,60): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+app/api/miniapp/auth/route.ts(4,22): error TS7016: Could not find a declaration file for module 'jsonwebtoken'. 'C:/Users/jackot34/Downloads/kingofcarts_appmini/node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/jsonwebtoken` if it exists or add a new declaration (.d.ts) file containing `declare module 'jsonwebtoken';`
+app/api/miniapp/leaderboard/route.ts(41,9): error TS7034: Variable 'players' implicitly has type 'any[]' in some locations where its type cannot be determined.
+app/api/miniapp/leaderboard/route.ts(66,17): error TS7005: Variable 'players' implicitly has an 'any[]' type.
+app/api/miniapp/story/continue/route.ts(13,21): error TS2551: Property 'isValid' does not exist on type '{ valid: boolean; data?: TelegramWebAppInitData | undefined; error?: string | undefined; }'. Did you mean 'valid'?
+app/api/miniapp/story/continue/route.ts(13,44): error TS2339: Property 'user' does not exist on type '{ valid: boolean; data?: TelegramWebAppInitData | undefined; error?: string | undefined; }'.
+app/api/miniapp/story/continue/route.ts(17,31): error TS2339: Property 'user' does not exist on type '{ valid: boolean; data?: TelegramWebAppInitData | undefined; error?: string | undefined; }'.
+app/api/telegram/route.ts(32,23): error TS2339: Property 'inline_query' does not exist on type 'TelegramUpdate'.
+app/api/telegram/route.ts(78,16): error TS2339: Property 'inline_query' does not exist on type 'TelegramUpdate'.
+components/theme-provider.tsx(9,33): error TS2339: Property 'children' does not exist on type 'ThemeProviderProps'.
+components/ui/badge.tsx(38,6): error TS2322: Type '{ ref?: LegacyRef<HTMLSpanElement> | undefined; key?: Key | null | undefined; defaultChecked?: boolean | undefined; defaultValue?: string | number | readonly string[] | undefined; ... 253 more ...; className: string; }' is not assignable to type 'RefAttributes<HTMLElement>'.
+  Types of property 'ref' are incompatible.
+    Type 'LegacyRef<HTMLSpanElement> | undefined' is not assignable to type 'Ref<HTMLElement> | undefined'.
+      Type 'string' is not assignable to type 'Ref<HTMLElement> | undefined'.
+components/ui/button.tsx(51,6): error TS2322: Type '{ ref?: LegacyRef<HTMLButtonElement> | undefined; key?: Key | null | undefined; autoFocus?: boolean | undefined; disabled?: boolean | undefined; ... 264 more ...; className: string; }' is not assignable to type 'RefAttributes<HTMLElement>'.
+  Types of property 'ref' are incompatible.
+    Type 'LegacyRef<HTMLButtonElement> | undefined' is not assignable to type 'Ref<HTMLElement> | undefined'.
+      Type 'string' is not assignable to type 'Ref<HTMLElement> | undefined'.
+lib/commands/stats-command.tsx(15,30): error TS2551: Property 'total_pp' does not exist on type '{ chaptersCompleted: number; themesCompleted: number; currentTheme: string; currentChapter: number; totalPP: number; allThemesProgress: AllThemesProgress; }'. Did you mean 'totalPP'?
+lib/commands/stats-command.tsx(16,40): error TS2551: Property 'chapters_completed' does not exist on type '{ chaptersCompleted: number; themesCompleted: number; currentTheme: string; currentChapter: number; totalPP: number; allThemesProgress: AllThemesProgress; }'. Did you mean 'chaptersCompleted'?
+lib/giveaway/use-giveaway.ts(23,35): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+lib/security/debug-auth.ts(3,24): error TS7016: Could not find a declaration file for module 'jsonwebtoken'. 'C:/Users/jackot34/Downloads/kingofcarts_appmini/node_modules/.pnpm/jsonwebtoken@9.0.3/node_modules/jsonwebtoken/index.js' implicitly has an 'any' type.
+  Try `npm i --save-dev @types/jsonwebtoken` if it exists or add a new declaration (.d.ts) file containing `declare module 'jsonwebtoken';`
+lib/security/security-report.ts(37,7): error TS2322: Type '{ user_id: string; suspicious_activity: string; count: number; }[]' is not assignable to type '{ user_id: string; activity: string; count: number; }[]'.
+  Property 'activity' is missing in type '{ user_id: string; suspicious_activity: string; count: number; }' but required in type '{ user_id: string; activity: string; count: number; }'.
