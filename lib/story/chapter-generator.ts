@@ -10,7 +10,7 @@ import { chatCompletion, generateImage, generateVideo, getChatModel, getImageMod
 import { QueryCache } from "@/lib/cache/query-cache"
 import type { StoryChapter } from "./story-manager"
 
-const MAX_CHAPTERS_PER_DAY_PER_THEME = 5
+const MAX_CHAPTERS_PER_DAY_GLOBAL = 5
 const LOCK_TIMEOUT_MS = 120_000 // 2 minutes
 const VALID_PP_VALUES = [3, 4, 5, 6]
 
@@ -39,16 +39,16 @@ interface GeneratedChapterContent {
 
 // ─── Rate Limit Check ───────────────────────────────────────────────
 
-async function checkDailyLimit(theme: string): Promise<{ allowed: boolean; remaining: number }> {
+async function checkDailyLimit(): Promise<{ allowed: boolean; remaining: number }> {
     const supabase = createAdminClient()
 
     const todayStart = new Date()
     todayStart.setHours(0, 0, 0, 0)
 
+    // Global limit: count ALL chapters generated today across ALL themes
     const { count, error } = await supabase
         .from("chapter_generation_daily")
         .select("*", { count: "exact", head: true })
-        .eq("theme", theme)
         .gte("generated_at", todayStart.toISOString())
 
     if (error) {
@@ -57,7 +57,7 @@ async function checkDailyLimit(theme: string): Promise<{ allowed: boolean; remai
     }
 
     const used = count || 0
-    const remaining = Math.max(0, MAX_CHAPTERS_PER_DAY_PER_THEME - used)
+    const remaining = Math.max(0, MAX_CHAPTERS_PER_DAY_GLOBAL - used)
 
     return { allowed: remaining > 0, remaining }
 }
@@ -349,7 +349,7 @@ export async function generateChapter(
     console.log(`[ChapterGenerator] Generating chapter ${chapterNumber} for theme ${theme}`)
 
     // 1. Check daily rate limit
-    const { allowed, remaining } = await checkDailyLimit(theme)
+    const { allowed, remaining } = await checkDailyLimit()
     if (!allowed) {
         console.log(`[ChapterGenerator] Daily limit reached for theme ${theme}`)
         return null
@@ -410,18 +410,18 @@ export async function generateChapter(
  * Check if a theme has reached its daily generation limit.
  * Returns { allowed, remaining, message }.
  */
-export async function getDailyLimitStatus(theme: string): Promise<{
+export async function getDailyLimitStatus(): Promise<{
     allowed: boolean
     remaining: number
     message: string
 }> {
-    const { allowed, remaining } = await checkDailyLimit(theme)
+    const { allowed, remaining } = await checkDailyLimit()
 
     return {
         allowed,
         remaining,
         message: allowed
-            ? `Puoi generare ancora ${remaining} capitoli oggi per questo tema.`
-            : `Hai raggiunto il limite di ${MAX_CHAPTERS_PER_DAY_PER_THEME} capitoli generati oggi per questo tema. Riprova domani!`,
+            ? `Puoi generare ancora ${remaining} capitoli oggi.`
+            : `Hai raggiunto il limite di ${MAX_CHAPTERS_PER_DAY_GLOBAL} capitoli generati oggi. Riprova domani!`,
     }
 }

@@ -23,6 +23,7 @@ interface Scene {
   index: number
   text: string
   choices: Choice[] | null
+  background_image_url?: string | null
 }
 
 export default function StoryPage() {
@@ -43,6 +44,7 @@ export default function StoryPage() {
   const [totalPP, setTotalPP] = useState(0)
   const [isCompleted, setIsCompleted] = useState(false)
   const [finaleText, setFinaleText] = useState("")
+  const [dailyLimitRemaining, setDailyLimitRemaining] = useState<number | null>(null)
 
   const { impactOccurred } = useHapticFeedback()
 
@@ -161,6 +163,7 @@ export default function StoryPage() {
         setIsCompleted(true)
         setFinaleText(data.finale.text)
         setTotalPP(data.totalPP)
+        setDailyLimitRemaining(data.dailyLimitRemaining ?? null)
         impactOccurred("heavy")
       } else {
         console.log("[v0] Next scene:", {
@@ -225,6 +228,7 @@ export default function StoryPage() {
         setIsCompleted(true)
         setFinaleText(data.finale.text)
         setTotalPP(data.totalPP)
+        setDailyLimitRemaining(data.dailyLimitRemaining ?? null)
         impactOccurred("heavy")
       } else {
         console.log("[v0] Next scene:", {
@@ -379,10 +383,32 @@ export default function StoryPage() {
                 <p className="text-2xl font-bold">{totalPP}</p>
               </div>
             </div>
-            <Button onClick={handleContinue} size="lg" className="w-full">
-              <Home className="mr-2 h-5 w-5" />
-              Continue
-            </Button>
+            <div className="flex flex-col gap-3">
+              {dailyLimitRemaining !== null && dailyLimitRemaining > 0 ? (
+                <Button
+                  onClick={() => {
+                    setIsCompleted(false)
+                    setFinaleText("")
+                    setSessionPP(0)
+                    setDailyLimitRemaining(null)
+                    loadStory()
+                  }}
+                  size="lg"
+                  className="w-full"
+                >
+                  🎮 Gioca il prossimo capitolo
+                  <span className="ml-2 text-xs opacity-70">({dailyLimitRemaining} rimanenti oggi)</span>
+                </Button>
+              ) : dailyLimitRemaining === 0 ? (
+                <Button disabled size="lg" className="w-full opacity-60">
+                  ⏰ Limite giornaliero raggiunto — Riprova domani!
+                </Button>
+              ) : null}
+              <Button onClick={handleContinue} size="lg" variant="outline" className="w-full">
+                <Home className="mr-2 h-5 w-5" />
+                Torna alla Home
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -420,6 +446,7 @@ export default function StoryPage() {
               sceneText={currentScene.text}
               sceneIndex={currentScene.index}
               chapterNumber={chapterNumber}
+              backgroundImageUrl={currentScene.background_image_url}
             />
           </div>
 

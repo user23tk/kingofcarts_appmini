@@ -104,57 +104,40 @@ export function StoryGenerator() {
     setValidationError("")
 
     try {
-      const existingChaptersResponse = await fetch(`/api/chapters?theme=${selectedTheme}`)
-      const existingChaptersData = existingChaptersResponse.ok
-        ? await existingChaptersResponse.json()
-        : { chapters: [] }
-      const existingChapters = existingChaptersData.chapters || []
-
-      console.log("[v0] Existing chapters:", existingChapters)
-
-      const generationContext = {
-        theme: selectedTheme,
-        chapterNumber: chapterNumber ? Number.parseInt(chapterNumber) : undefined,
-        existingChapters: Array.isArray(existingChapters) ? existingChapters.slice(0, 5) : [],
-        isEvent: isEventMode,
-        eventMultiplier: selectedEvent?.pp_multiplier || 1.0,
-        eventEmoji: selectedEvent?.event_emoji || "",
-      }
-
       const response = await fetch("/api/generate-chapter", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(generationContext),
+        body: JSON.stringify({
+          theme: selectedTheme,
+          chapterNumber: chapterNumber ? Number.parseInt(chapterNumber) : undefined,
+        }),
       })
 
       if (!response.ok) {
         if (response.status === 401) {
           throw new Error("Non autorizzato. Effettua nuovamente il login.")
         }
-        throw new Error("Errore nella generazione del capitolo")
-      }
-
-      // Handle streaming response
-      const reader = response.body?.getReader()
-      const decoder = new TextDecoder()
-      let fullResponse = ""
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-
-          const chunk = decoder.decode(value, { stream: true })
-          fullResponse += chunk
-          setGeneratedContent(fullResponse)
+        if (response.status === 429) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Limite giornaliero raggiunto")
         }
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Errore nella generazione del capitolo")
       }
 
-      if (fullResponse.trim()) {
-        validateContent(fullResponse)
+      const data = await response.json()
+
+      if (data.chapter) {
+        // Show the clean chapter JSON (already saved to DB by the backend)
+        const chapterJson = JSON.stringify(data.chapter, null, 2)
+        setGeneratedContent(chapterJson)
+        validateContent(chapterJson)
+        setSaveLocation("json") // Default to JSON download since DB save already done
+      } else {
+        throw new Error("Nessun capitolo generato")
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Errore sconosciuto")
@@ -177,33 +160,12 @@ export function StoryGenerator() {
       const chapterData = JSON.parse(generatedContent)
 
       if (saveLocation === "database") {
-        setIsGenerating(true)
-        setError("")
-
-        const response = await fetch("/api/chapters", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            theme: selectedTheme,
-            chapterNumber: chapterNumber ? Number.parseInt(chapterNumber) : 1,
-            content: chapterData,
-          }),
-        })
-
-        const result = await response.json()
-
-        if (!response.ok) {
-          throw new Error(result.error || "Errore nel salvataggio")
-        }
-
+        // Chapter is already saved to DB by the generate-chapter API
         alert(
-          `✅ Capitolo salvato con successo nel database!\n\nTema: ${selectedTheme}\nCapitolo: ${chapterNumber}\nTitolo: ${result.chapter.title}${isEventMode ? `\n🎉 Evento: ${selectedEvent?.title} (${selectedEvent?.pp_multiplier}x PP)` : ""}`,
+          `✅ Il capitolo è già stato salvato nel database durante la generazione!\n\nTema: ${selectedTheme}\nCapitolo: ${chapterNumber || "auto"}\nTitolo: ${chapterData.title}`,
         )
 
-        // Reset form dopo salvataggio riuscito
+        // Reset form
         setGeneratedContent("")
         setValidationStatus(null)
         setSelectedTheme("")
@@ -222,8 +184,6 @@ export function StoryGenerator() {
       }
     } catch (err) {
       setError(`Errore nel salvataggio: ${err instanceof Error ? err.message : "Errore sconosciuto"}`)
-    } finally {
-      setIsGenerating(false)
     }
   }
 

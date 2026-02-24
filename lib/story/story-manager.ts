@@ -14,6 +14,7 @@ export interface StoryScene {
   index: number
   text: string
   choices: StoryChoice[]
+  background_image_url?: string | null
 }
 
 export interface StoryFinale {
@@ -261,8 +262,8 @@ export class StoryManager {
   /**
    * Check daily generation limit for a theme
    */
-  async getDailyLimitStatus(theme: string) {
-    return getChapterLimitStatus(theme)
+  async getDailyLimitStatus() {
+    return getChapterLimitStatus()
   }
 
   async completeChapter(userId: string, theme: string, ppGained: number): Promise<void> {

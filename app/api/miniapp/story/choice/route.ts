@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     // controlla solo se il limite giornaliero di generazione è stato raggiunto.
     // getChapter() si occuperà di generare dinamicamente i capitoli mancanti.
     if (themeProgress.completed || themeProgress.current_chapter > availableChapters) {
-      const limitStatus = await storyManager.getDailyLimitStatus(theme)
+      const limitStatus = await storyManager.getDailyLimitStatus()
       if (!limitStatus.allowed) {
         console.log("miniapp-story-choice", "Daily generation limit reached", {
           userId,
@@ -312,6 +312,8 @@ export async function POST(request: NextRequest) {
 
       console.info("miniapp-story-choice", "Chapter completed", { userId, theme, ppEarned: finalPPEarned })
 
+      const dailyLimit = await storyManager.getDailyLimitStatus()
+
       return NextResponse.json({
         success: true,
         completed: true,
@@ -325,6 +327,7 @@ export async function POST(request: NextRequest) {
         ppEarned: finalPPEarned,
         totalPP: progress?.total_pp || 0,
         nextChapter: chapter.finale.nextChapter,
+        dailyLimitRemaining: dailyLimit.remaining,
       })
     }
 
@@ -347,6 +350,7 @@ export async function POST(request: NextRequest) {
           progress?.total_pp,
         ),
         choices: nextScene.choices || null,
+        background_image_url: nextScene.background_image_url || null,
       },
       ppEarned: ppDelta,
       sessionPP: updatedSession.ppAccumulated,
