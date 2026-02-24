@@ -113,12 +113,14 @@ Devi generare un nuovo capitolo per il tema "${theme}" seguendo ESATTAMENTE ques
 STRUTTURA RIGIDA OBBLIGATORIA:
 - 8 scene indicizzate 0-7
 - Scene 0, 2, 4, 6: SOLO testo narrativo (intermezzi senza scelte)
-- Scene 1, 3, 5, 7: testo + 2 scelte (A/B) con pp_delta ∈ {3,4,5,6}
+- Scene 1, 3, 5, 7: testo + ESATTAMENTE 2 scelte (A e B) con pp_delta ∈ {3,4,5,6}
 - Goto logic: scene 1/3/5 → scena successiva (2/4/6), scena 7 → goto: -1
 - Finale con testo + nextChapter
 
-REGOLE SCELTE:
-- Ogni scelta deve avere pp_delta tra 3-6 (SOLO valori positivi: 3, 4, 5, o 6)
+REGOLE SCELTE (CRITICHE):
+- Ogni scena con scelte DEVE avere ESATTAMENTE 2 scelte, NON 3, NON 1, SOLO 2
+- Le scelte devono avere id "A" e "B"
+- pp_delta DEVE essere 3, 4, 5 oppure 6 (SOLO questi valori)
 - Scene 1, 3, 5: goto deve puntare alla scena successiva (2, 4, 6)
 - Scena 7: goto deve essere -1 (indica finale)
 
@@ -136,43 +138,138 @@ Genera SOLO il JSON valido del capitolo, senza commenti, markdown o spiegazioni.
 
     const userPrompt = `Genera il capitolo ${chapterNumber} per il tema "${theme}".
 Il JSON deve contenere: id, title, scenes (8), finale.
+IMPORTANTE: ogni scena con scelte DEVE avere ESATTAMENTE 2 scelte (A e B), MAI 3.
 Rispondi SOLO con JSON valido.`
 
-    try {
-        const result = await chatCompletion({
-            model: getChatModel(),
-            messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: userPrompt },
-            ],
-            temperature: 0.7,
-            maxTokens: 4000,
-        })
+    const MAX_ATTEMPTS = 2
 
-        const content = result.choices?.[0]?.message?.content
-        if (!content) {
-            console.error("[ChapterGenerator] No content from AI")
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+            console.log(`[ChapterGenerator] Attempt ${attempt}/${MAX_ATTEMPTS} for ${theme} chapter ${chapterNumber}`)
+
+            const result = await chatCompletion({
+                model: getChatModel(),
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: userPrompt },
+                ],
+                temperature: attempt === 1 ? 0.7 : 0.5, // Lower temperature on retry
+                maxTokens: 4000,
+            })
+
+            const content = result.choices?.[0]?.message?.content
+            if (!content) {
+                console.error("[ChapterGenerator] No content from AI")
+                continue
+            }
+
+            // Parse JSON (handle potential markdown wrapping)
+            const cleanJson = content.replace(/```json?\n?/g, "").replace(/```/g, "").trim()
+            let parsed: GeneratedChapterContent = JSON.parse(cleanJson)
+
+            // Auto-repair common AI mistakes before validation
+            parsed = repairChapterStructure(parsed)
+
+            // Validate structure
+            if (!validateChapterStructure(parsed)) {
+                console.error(`[ChapterGenerator] Invalid chapter structure on attempt ${attempt}`)
+                if (attempt < MAX_ATTEMPTS) {
+                    console.log("[ChapterGenerator] Retrying...")
+                    continue
+                }
+                return null
+            }
+
+            // Override ID to be consistent
+            parsed.id = `${theme}_${chapterNumber}`
+
+            return parsed
+        } catch (error) {
+            console.error(`[ChapterGenerator] AI generation failed on attempt ${attempt}:`, error)
+            if (attempt < MAX_ATTEMPTS) {
+                console.log("[ChapterGenerator] Retrying...")
+                continue
+            }
             return null
         }
-
-        // Parse JSON (handle potential markdown wrapping)
-        const cleanJson = content.replace(/```json?\n?/g, "").replace(/```/g, "").trim()
-        const parsed: GeneratedChapterContent = JSON.parse(cleanJson)
-
-        // Validate structure
-        if (!validateChapterStructure(parsed)) {
-            console.error("[ChapterGenerator] Invalid chapter structure")
-            return null
-        }
-
-        // Override ID to be consistent
-        parsed.id = `${theme}_${chapterNumber}`
-
-        return parsed
-    } catch (error) {
-        console.error("[ChapterGenerator] AI generation failed:", error)
-        return null
     }
+
+    return null
+}
+
+// ─── Auto-Repair ────────────────────────────────────────────────────
+
+function repairChapterStructure(chapter: GeneratedChapterContent): GeneratedChapterContent {
+    console.log("[ChapterGenerator] Attempting auto-repair of chapter structure...")
+
+    // 1. Fix scene count: take first 8 or pad
+    if (chapter.scenes.length > 8) {
+        chapter.scenes = chapter.scenes.slice(0, 8)
+    }
+
+    // 2. Fix scene indices (force 0-7 in order)
+    chapter.scenes.forEach((scene, i) => {
+        if (scene.index !== i) {
+            console.log(`[ChapterGenerator] Repair: scene at position ${i} had index ${scene.index}, fixed to ${i}`)
+            scene.index = i
+        }
+    })
+
+    const CHOICE_SCENES = [1, 3, 5, 7]
+    const INTERLUDE_SCENES = [0, 2, 4, 6]
+
+    // 3. Fix choice scenes
+    for (const sceneIndex of CHOICE_SCENES) {
+        const scene = chapter.scenes[sceneIndex]
+        if (!scene) continue
+
+        if (!scene.choices || scene.choices.length === 0) {
+            // Generate default choices if completely missing
+            console.log(`[ChapterGenerator] Repair: scene ${sceneIndex} missing choices, adding defaults`)
+            const gotoValue = sceneIndex === 7 ? -1 : sceneIndex + 1
+            scene.choices = [
+                { id: "A", label: "🎭 Prima scelta", pp_delta: 4, goto: gotoValue },
+                { id: "B", label: "✨ Seconda scelta", pp_delta: 3, goto: gotoValue },
+            ]
+        } else if (scene.choices.length > 2) {
+            // Truncate to 2 choices (keep A and B)
+            console.log(`[ChapterGenerator] Repair: scene ${sceneIndex} had ${scene.choices.length} choices, truncated to 2`)
+            scene.choices = scene.choices.slice(0, 2)
+        }
+
+        // Fix choice IDs
+        if (scene.choices.length >= 2) {
+            scene.choices[0].id = "A"
+            scene.choices[1].id = "B"
+        }
+
+        // Fix goto values
+        const expectedGoto = sceneIndex === 7 ? -1 : sceneIndex + 1
+        for (const choice of scene.choices) {
+            if (choice.goto !== expectedGoto) {
+                console.log(`[ChapterGenerator] Repair: scene ${sceneIndex} choice ${choice.id} goto ${choice.goto} → ${expectedGoto}`)
+                choice.goto = expectedGoto
+            }
+            // Clamp pp_delta to valid values
+            if (!VALID_PP_VALUES.includes(choice.pp_delta)) {
+                const clamped = Math.max(3, Math.min(6, Math.round(choice.pp_delta)))
+                const validClamped = VALID_PP_VALUES.includes(clamped) ? clamped : 4
+                console.log(`[ChapterGenerator] Repair: pp_delta ${choice.pp_delta} → ${validClamped}`)
+                choice.pp_delta = validClamped
+            }
+        }
+    }
+
+    // 4. Remove choices from interlude scenes
+    for (const sceneIndex of INTERLUDE_SCENES) {
+        const scene = chapter.scenes[sceneIndex]
+        if (scene?.choices && scene.choices.length > 0) {
+            console.log(`[ChapterGenerator] Repair: removed choices from interlude scene ${sceneIndex}`)
+            delete scene.choices
+        }
+    }
+
+    return chapter
 }
 
 // ─── Validation ─────────────────────────────────────────────────────
