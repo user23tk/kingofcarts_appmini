@@ -2,11 +2,11 @@
  * ChapterGenerator — Genera capitoli dinamici con NanoGPT
  * - Rate limit: 5 capitoli/giorno/tema
  * - Lock per evitare generazione concorrente
- * - Genera immagini per ogni scena + video per scena 6
+ * - Genera immagini per ogni scena
  */
 
 import { createAdminClient } from "@/lib/supabase/admin-singleton"
-import { chatCompletion, generateImage, generateVideo, getChatModel, getImageModel, getVideoModel } from "@/lib/ai/nanogpt-client"
+import { chatCompletion, generateImage, getChatModel, getImageModel } from "@/lib/ai/nanogpt-client"
 import { QueryCache } from "@/lib/cache/query-cache"
 import type { StoryChapter } from "./story-manager"
 
@@ -18,7 +18,6 @@ interface GeneratedScene {
     index: number
     text: string
     image_prompt: string
-    video_prompt?: string
     choices?: Array<{
         id: string
         label: string
@@ -132,7 +131,6 @@ STILE:
 - Testi coinvolgenti e immersivi
 
 PER OGNI SCENA genera anche un campo "image_prompt" con una descrizione BREVE in inglese per generare un'immagine di sfondo della scena.
-Per la scena 6 (penultimo intermezzo) aggiungi ANCHE un campo "video_prompt" con una descrizione breve per un video drammatico di 5 secondi con testo scritto.
 
 Genera SOLO il JSON valido del capitolo, senza commenti, markdown o spiegazioni.`
 
@@ -317,9 +315,8 @@ function validateChapterStructure(chapter: GeneratedChapterContent): boolean {
 
 async function generateSceneMedia(
     scenes: GeneratedScene[]
-): Promise<{ imageUrls: Record<number, string>; videoUrl: string | null }> {
+): Promise<{ imageUrls: Record<number, string> }> {
     const imageUrls: Record<number, string> = {}
-    let videoUrl: string | null = null
 
     // Generate images for all scenes in parallel
     const imagePromises = scenes.map(async (scene) => {
@@ -343,34 +340,14 @@ async function generateSceneMedia(
 
     await Promise.all(imagePromises)
 
-    // Generate video for scene 6 if prompt exists
-    const scene6 = scenes.find((s) => s.index === 6)
-    if (scene6?.video_prompt) {
-        try {
-            videoUrl = await generateVideo({
-                prompt: scene6.video_prompt,
-                duration: 5,
-                model: getVideoModel(),
-            })
-            if (videoUrl) {
-                console.log(`[ChapterGenerator] Video generated for scene 6: ${videoUrl}`)
-            }
-        } catch (error) {
-            console.error("[ChapterGenerator] Video generation failed:", error)
-        }
-    }
-
-    return { imageUrls, videoUrl }
+    return { imageUrls }
 }
-
-// ─── Save to Database ───────────────────────────────────────────────
 
 async function saveChapterToDatabase(
     theme: string,
     chapterNumber: number,
     chapter: GeneratedChapterContent,
-    imageUrls: Record<number, string>,
-    videoUrl: string | null
+    imageUrls: Record<number, string>
 ): Promise<boolean> {
     const supabase = createAdminClient()
 
@@ -398,7 +375,6 @@ async function saveChapterToDatabase(
                 goto: c.goto,
             })),
             background_image_url: imageUrls[scene.index] || null,
-            video_url: scene.index === 6 ? videoUrl : null,
         })),
         finale: chapter.finale,
     }
@@ -467,11 +443,11 @@ export async function generateChapter(
             return null
         }
 
-        // 4. Generate media (images + video) in parallel
-        const { imageUrls, videoUrl } = await generateSceneMedia(chapterContent.scenes)
+        // 4. Generate media (images)
+        const { imageUrls } = await generateSceneMedia(chapterContent.scenes)
 
         // 5. Save to database
-        const saved = await saveChapterToDatabase(theme, chapterNumber, chapterContent, imageUrls, videoUrl)
+        const saved = await saveChapterToDatabase(theme, chapterNumber, chapterContent, imageUrls)
         if (!saved) {
             console.error("[ChapterGenerator] Failed to save chapter")
             return null
@@ -491,6 +467,7 @@ export async function generateChapter(
                     label: c.label,
                     pp_delta: c.pp_delta,
                 })) || [],
+                background_image_url: imageUrls[s.index] || null,
             })),
             finale: {
                 text: chapterContent.finale.text,

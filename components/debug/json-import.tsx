@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { validateChapterStructure, type Chapter } from "@/lib/schemas/chapter-schema"
 import { Upload, CheckCircle, XCircle, AlertTriangle, FileText } from "lucide-react"
+import { useDebugAuth } from "@/components/debug/debug-auth"
 
 interface ImportResult {
   success: boolean
@@ -23,8 +24,15 @@ export function JsonImport() {
   const [results, setResults] = useState<ImportResult[]>([])
   const [progress, setProgress] = useState(0)
 
+  const { token } = useDebugAuth()
+
   const handleImport = async () => {
     if (!jsonInput.trim()) return
+
+    if (!token) {
+      setResults([{ success: false, error: "Autenticazione richiesta. Effettua il login come admin." }])
+      return
+    }
 
     setIsImporting(true)
     setResults([])
@@ -55,7 +63,10 @@ export function JsonImport() {
           // Salvataggio nel database
           const response = await fetch("/api/chapters", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
             body: JSON.stringify({
               theme: validatedChapter.id.split("_")[0] || "imported", // Estrae tema dall'ID
               chapterNumber: Number.parseInt(validatedChapter.id.split("_")[1]) || i + 1, // Estrae numero o usa indice

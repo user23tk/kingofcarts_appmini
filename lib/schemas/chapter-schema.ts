@@ -12,6 +12,7 @@ export const SceneSchema = z.object({
   index: z.number().int().min(GAME_CONSTANTS.SCENE_MIN_INDEX).max(GAME_CONSTANTS.SCENE_FINAL_INDEX),
   text: z.string().min(1, "Testo scena non può essere vuoto"),
   choices: z.array(ChoiceSchema).optional(),
+  background_image_url: z.string().url().nullable().optional(),
 })
 
 // Schema per il finale
