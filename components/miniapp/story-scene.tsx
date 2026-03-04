@@ -11,7 +11,6 @@ interface StorySceneProps {
   sceneIndex: number
   chapterNumber: number
   isLoading?: boolean
-  backgroundImageUrl?: string | null
 }
 
 function parseStoryText(text: string): React.ReactNode[] {
@@ -123,29 +122,17 @@ function parseStoryText(text: string): React.ReactNode[] {
   return parts.length > 0 ? parts : [text]
 }
 
-export function StoryScene({ theme, sceneText, sceneIndex, chapterNumber, isLoading = false, backgroundImageUrl }: StorySceneProps) {
+export function StoryScene({ theme, sceneText, sceneIndex, chapterNumber, isLoading = false }: StorySceneProps) {
   const [isVisible, setIsVisible] = useState(false)
   const [displayedText, setDisplayedText] = useState("")
   const [isTyping, setIsTyping] = useState(false)
-  const [imageLoaded, setImageLoaded] = useState(false)
 
   // Fade in animation on mount
   useEffect(() => {
     setIsVisible(false)
-    setImageLoaded(false)
     const timer = setTimeout(() => setIsVisible(true), 100)
     return () => clearTimeout(timer)
   }, [sceneIndex])
-
-  // Preload background image
-  useEffect(() => {
-    if (backgroundImageUrl) {
-      const img = new Image()
-      img.onload = () => setImageLoaded(true)
-      img.onerror = () => setImageLoaded(false)
-      img.src = backgroundImageUrl
-    }
-  }, [backgroundImageUrl])
 
   // Optional typewriter effect (can be toggled)
   useEffect(() => {
@@ -184,23 +171,8 @@ export function StoryScene({ theme, sceneText, sceneIndex, chapterNumber, isLoad
       className={`relative overflow-hidden transition-all duration-700 ${isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
         }`}
     >
-      {/* Background image */}
-      {backgroundImageUrl && (
-        <div
-          className={`absolute inset-0 rounded-2xl transition-opacity duration-1000 ${imageLoaded ? "opacity-100" : "opacity-0"
-            }`}
-          style={{
-            backgroundImage: `url(${backgroundImageUrl})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        />
-      )}
       {/* Scene text */}
-      <div className={`relative rounded-2xl p-6 md:p-8 backdrop-blur-md ${backgroundImageUrl && imageLoaded
-          ? "bg-black/50"
-          : "bg-black/20"
-        }`}>
+      <div className="relative rounded-2xl p-6 md:p-8 backdrop-blur-md bg-black/50 border border-white/10 shadow-xl">
         <p
           className="text-balance text-center text-lg md:text-xl leading-relaxed text-white"
           style={{

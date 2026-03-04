@@ -1,12 +1,13 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { getThemeColors, type ThemeName } from "@/lib/theme-colors"
 
 interface AnimatedBackgroundProps {
   theme: ThemeName
   intensity?: "low" | "medium" | "high"
   variant?: "scene" | "menu"
+  backgroundImageUrl?: string | null
 }
 
 const clampOpacity = (value: number): number => {
@@ -53,9 +54,22 @@ const hexToRgba = (hex: string, alpha: number): string => {
   return `rgba(${r}, ${g}, ${b}, ${clampedAlpha})`
 }
 
-export function AnimatedBackground({ theme, intensity = "medium", variant = "scene" }: AnimatedBackgroundProps) {
+export function AnimatedBackground({ theme, intensity = "medium", variant = "scene", backgroundImageUrl }: AnimatedBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const colors = getThemeColors(theme)
+  const [imageLoaded, setImageLoaded] = useState(false)
+
+  useEffect(() => {
+    if (backgroundImageUrl) {
+      setImageLoaded(false)
+      const img = new Image()
+      img.onload = () => setImageLoaded(true)
+      img.onerror = () => setImageLoaded(false)
+      img.src = backgroundImageUrl
+    } else {
+      setImageLoaded(false)
+    }
+  }, [backgroundImageUrl])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -130,8 +144,20 @@ export function AnimatedBackground({ theme, intensity = "medium", variant = "sce
   }, [theme, intensity, colors])
 
   return (
-    <div className="fixed inset-0 -z-10 overflow-hidden">
-      {/* Base gradient layer */}
+    <div className="fixed inset-0 -z-10 overflow-hidden bg-black">
+      {/* Background Image (Full screen) */}
+      {backgroundImageUrl && (
+        <div
+          className={`absolute inset-0 transition-opacity duration-1000 ${imageLoaded ? "opacity-100" : "opacity-0"}`}
+          style={{
+            backgroundImage: `url(${backgroundImageUrl})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        />
+      )}
+
+      {/* Base gradient layer (over the image) */}
       <div
         className="absolute inset-0"
         style={{

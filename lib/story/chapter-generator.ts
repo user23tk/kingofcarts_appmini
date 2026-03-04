@@ -112,13 +112,13 @@ Devi generare un nuovo capitolo per il tema "${theme}" seguendo ESATTAMENTE ques
 STRUTTURA RIGIDA OBBLIGATORIA:
 - 8 scene indicizzate 0-7
 - Scene 0, 2, 4, 6: SOLO testo narrativo (intermezzi senza scelte)
-- Scene 1, 3, 5, 7: testo + ESATTAMENTE 2 scelte (A e B) con pp_delta ∈ {3,4,5,6}
-- Goto logic: scene 1/3/5 → scena successiva (2/4/6), scena 7 → goto: -1
-- Finale con testo + nextChapter
+- Scene 1, 3, 5, 7: testo + ESATTAMENTE 2 scelte (A e B). Ogni scelta deve avere: "id", "label" (testo da mostrare nel bottone), "pp_delta" ∈ {3,4,5,6}, "goto".
+- Finale con "text" e "nextChapter" (ATTENZIONE: nextChapter DEVE essere una stringa, es. "2" o "tema_2", mai un numero intero).
 
 REGOLE SCELTE (CRITICHE):
 - Ogni scena con scelte DEVE avere ESATTAMENTE 2 scelte, NON 3, NON 1, SOLO 2
 - Le scelte devono avere id "A" e "B"
+- Ogni scelta DEVE avere una "label" (stringa) fighissima e psichedelica
 - pp_delta DEVE essere 3, 4, 5 oppure 6 (SOLO questi valori)
 - Scene 1, 3, 5: goto deve puntare alla scena successiva (2, 4, 6)
 - Scena 7: goto deve essere -1 (indica finale)
@@ -136,7 +136,7 @@ Genera SOLO il JSON valido del capitolo, senza commenti, markdown o spiegazioni.
 
     const userPrompt = `Genera il capitolo ${chapterNumber} per il tema "${theme}".
 Il JSON deve contenere: id, title, scenes (8), finale.
-IMPORTANTE: ogni scena con scelte DEVE avere ESATTAMENTE 2 scelte (A e B), MAI 3.
+IMPORTANTE: ogni scena con scelte DEVE avere ESATTAMENTE 2 scelte (A e B), ognuna con una "label" (testo stringa), MAI 3 scelte. "nextChapter" nel finale deve essere una stringa.
 Rispondi SOLO con JSON valido.`
 
     const MAX_ATTEMPTS = 2
@@ -213,6 +213,12 @@ function repairChapterStructure(chapter: GeneratedChapterContent): GeneratedChap
         }
     })
 
+    // 2.5 Fix nextChapter format (force to string)
+    if (chapter.finale && typeof chapter.finale.nextChapter === "number") {
+        console.log(`[ChapterGenerator] Repair: nextChapter ${chapter.finale.nextChapter} was a number, casting to string`)
+        chapter.finale.nextChapter = String(chapter.finale.nextChapter)
+    }
+
     const CHOICE_SCENES = [1, 3, 5, 7]
     const INTERLUDE_SCENES = [0, 2, 4, 6]
 
@@ -235,10 +241,12 @@ function repairChapterStructure(chapter: GeneratedChapterContent): GeneratedChap
             scene.choices = scene.choices.slice(0, 2)
         }
 
-        // Fix choice IDs
+        // Fix choice IDs and labels
         if (scene.choices.length >= 2) {
             scene.choices[0].id = "A"
+            if (!scene.choices[0].label) scene.choices[0].label = "Segui questo percorso"
             scene.choices[1].id = "B"
+            if (!scene.choices[1].label) scene.choices[1].label = "Esplora un'altra via"
         }
 
         // Fix goto values

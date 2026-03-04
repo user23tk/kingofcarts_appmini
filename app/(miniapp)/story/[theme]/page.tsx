@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useAuth } from "@/lib/miniapp/auth-context"
 import { AnimatedBackground } from "@/components/miniapp/animated-background"
+import type { ThemeName } from "@/lib/theme-colors"
 import { StoryScene } from "@/components/miniapp/story-scene"
 import { StoryChoices } from "@/components/miniapp/story-choices"
 import { StoryProgress } from "@/components/miniapp/story-progress"
@@ -30,7 +31,7 @@ export default function StoryPage() {
   const params = useParams()
   const router = useRouter()
   const { user, isAuthenticated, isLoading: authLoading, initData } = useAuth()
-  const theme = params.theme as string
+  const theme = params.theme as ThemeName
 
   const [isLoading, setIsLoading] = useState(true)
   const [isTransitioning, setIsTransitioning] = useState(false)
@@ -358,7 +359,12 @@ export default function StoryPage() {
         className="fixed inset-0 flex items-center justify-center p-4"
         style={{ paddingTop: "calc(var(--total-safe-top, 0px) + 92px)" }}
       >
-        <AnimatedBackground theme={theme} intensity="high" variant="scene" />
+        <AnimatedBackground
+          theme={theme}
+          intensity="high"
+          variant="scene"
+          backgroundImageUrl={currentScene?.background_image_url}
+        />
         <Card className="relative z-10 max-w-2xl">
           <CardContent className="p-8 text-center">
             <div className="mb-6">
@@ -421,7 +427,12 @@ export default function StoryPage() {
 
   return (
     <div className="fixed inset-0 overflow-hidden" style={{ paddingTop: "calc(var(--total-safe-top, 0px) + 92px)" }}>
-      <AnimatedBackground theme={theme} intensity="medium" variant="scene" />
+      <AnimatedBackground
+        theme={theme}
+        intensity="medium"
+        variant="scene"
+        backgroundImageUrl={currentScene.background_image_url}
+      />
 
       <div className="relative z-10 h-full flex flex-col">
         {/* Progress Bar */}
@@ -446,7 +457,6 @@ export default function StoryPage() {
               sceneText={currentScene.text}
               sceneIndex={currentScene.index}
               chapterNumber={chapterNumber}
-              backgroundImageUrl={currentScene.background_image_url}
             />
           </div>
 
