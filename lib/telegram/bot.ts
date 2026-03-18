@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin-singleton"
 import type { InlineKeyboardMarkup } from "./types"
 import { AdvancedRateLimiter } from "../security/rate-limiter"
 
@@ -99,10 +99,16 @@ export class TelegramBot {
   }
 
   async getOrCreateUser(telegramUser: any) {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     // Try to find existing user
-    const { data: existingUser } = await supabase.from("users").select("*").eq("telegram_id", telegramUser.id).single()
+    const { data: existingUser, error: selectError } = await supabase.from("users").select("*").eq("telegram_id", telegramUser.id).single()
+
+    // PostgREST returns PGRST116 (0 rows) if not found, which we handle
+    if (selectError && selectError.code !== "PGRST116") {
+      console.error("[v0] Error selecting user:", selectError)
+      throw new Error(`Database error: ${selectError.message}`)
+    }
 
     if (existingUser) {
       const needsUpdate =
@@ -133,7 +139,7 @@ export class TelegramBot {
     }
 
     console.log(`[v0] Creating new user ${telegramUser.id}`)
-    const { data: newUser } = await supabase
+    const { data: newUser, error: insertError } = await supabase
       .from("users")
       .insert({
         telegram_id: telegramUser.id,
@@ -146,6 +152,11 @@ export class TelegramBot {
       .select()
       .single()
 
+    if (insertError) {
+      console.error("[v0] Error creating user:", insertError)
+      throw new Error(`Database error: ${insertError.message}`)
+    }
+
     // Increment total users stat
     await supabase.rpc("increment_global_stat", {
       stat_name_param: "total_users",
@@ -155,6 +166,6 @@ export class TelegramBot {
   }
 
   async getSupabaseClient() {
-    return await createClient()
+    return createAdminClient()
   }
 }
