@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin-singleton"
 import { logger } from "@/lib/debug/logger"
 import { requireDebugAuth } from "@/lib/security/debug-auth"
 
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const giveawayId = searchParams.get("giveaway_id")
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     if (giveawayId) {
       // Get stats for specific giveaway

@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin-singleton"
 import { requireDebugAuth } from "@/lib/security/debug-auth"
 import { logger } from "@/lib/debug/logger"
 
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
 
     logger.info("debug-configure-bot", "Starting comprehensive bot configuration")
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const { data: activeEventData } = await supabase.rpc("get_active_event")
     const activeEvent = activeEventData && activeEventData.length > 0 ? activeEventData[0] : null
 

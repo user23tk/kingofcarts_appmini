@@ -61,13 +61,13 @@ const fetcher = async (url: string) => {
 
 export default function MiniAppHome() {
   const router = useRouter()
-  const { isAuthenticated, isLoading, user } = useAuth()
+  const { isAuthenticated, isLoading, user, initData } = useAuth()
   const {
     data: dashboardData,
     error,
     isLoading: dataLoading,
     mutate,
-  } = useSWR<DashboardData>(isAuthenticated && user?.id ? `/api/miniapp/dashboard?userId=${user.id}` : null, fetcher, {
+  } = useSWR<DashboardData>(isAuthenticated && user?.id ? `/api/miniapp/dashboard?userId=${user.id}&initData=${encodeURIComponent(initData || "")}` : null, fetcher, {
     refreshInterval: 0, // Disabled automatic polling - only fetch on mount, focus, and manual refresh
     revalidateOnFocus: true, // Refetch when user returns to tab
     revalidateOnReconnect: true, // Refetch when connection is restored

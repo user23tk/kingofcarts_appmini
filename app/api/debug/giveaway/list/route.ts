@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin-singleton"
 import { logger } from "@/lib/debug/logger"
 import { requireDebugAuth } from "@/lib/security/debug-auth"
 
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { data: giveaways, error } = await supabase
       .from("giveaways")

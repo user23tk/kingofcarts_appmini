@@ -4,17 +4,17 @@ import { EventManager } from "@/lib/story/event-manager"
 import { MiniAppSecurity } from "@/lib/security/miniapp-security"
 import { QueryCache } from "@/lib/cache/query-cache"
 import { LeaderboardManager } from "@/lib/leaderboard/leaderboard-manager"
+import { requireTelegramAuthGet } from "@/lib/miniapp/auth-middleware"
 
 export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams
-    const userId = searchParams.get("userId")
-
-    if (!userId) {
-      return NextResponse.json({ error: "User ID required" }, { status: 400 })
+    const auth = await requireTelegramAuthGet(request)
+    if (!auth.authorized) {
+      return auth.response!
     }
+    const userId = auth.userId!
 
     const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || undefined
     const userAgent = request.headers.get("user-agent") || undefined

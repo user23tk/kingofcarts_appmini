@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin-singleton"
 import { requireDebugAuth } from "@/lib/security/debug-auth"
 import { logger } from "@/lib/debug/logger"
 
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic"
 // GET - Fetch all events and active event (public endpoint)
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { data: events, error: eventsError } = await supabase
       .from("themes")
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     // Check if there's already an active event
     if (is_active) {
@@ -138,7 +138,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Event ID richiesto" }, { status: 400 })
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     // Soft delete - just mark as inactive
     const { error } = await supabase.from("themes").update({ is_active: false }).eq("id", eventId)

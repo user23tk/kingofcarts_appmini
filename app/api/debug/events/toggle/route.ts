@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin-singleton"
 import { requireDebugAuth } from "@/lib/security/debug-auth"
 import { logger } from "@/lib/debug/logger"
 
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Event ID richiesto" }, { status: 400 })
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     // If activating, check if there's already an active event
     if (isActive) {

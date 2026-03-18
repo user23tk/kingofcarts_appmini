@@ -112,3 +112,84 @@ export async function requireTelegramAuth(request: NextRequest): Promise<Telegra
     }
   }
 }
+
+/**
+ * Validates Telegram WebApp initData for GET requests
+ * Extracts initData from the 'x-telegram-init-data' header or 'initData' query parameter
+ */
+export async function requireTelegramAuthGet(request: NextRequest): Promise<TelegramAuthResult> {
+  try {
+    let initData = request.headers.get("x-telegram-init-data")
+    
+    if (!initData) {
+      const searchParams = request.nextUrl.searchParams
+      initData = searchParams.get("initData")
+    }
+
+    if (!initData) {
+      logger.warn("miniapp-auth", "Missing initData in GET request")
+      return {
+        authorized: false,
+        response: NextResponse.json({ error: "Missing authentication data" }, { status: 401 }),
+      }
+    }
+
+    // Validate Telegram WebApp data
+    const validation = validateTelegramWebAppData(initData)
+
+    if (!validation.valid || !validation.data) {
+      logger.warn("miniapp-auth", "Invalid Telegram auth", { error: validation.error })
+      return {
+        authorized: false,
+        response: NextResponse.json({ error: validation.error || "Invalid authentication data" }, { status: 401 }),
+      }
+    }
+
+    const telegramUser = extractUserFromInitData(validation.data)
+
+    if (!telegramUser) {
+      return {
+        authorized: false,
+        response: NextResponse.json({ error: "User data not found" }, { status: 401 }),
+      }
+    }
+
+    const bot = new TelegramBot()
+    const user = await QueryCache.get(
+      `telegram_user:${telegramUser.id}`,
+      async () => {
+        return await bot.getOrCreateUser({
+          id: telegramUser.id,
+          username: telegramUser.username,
+          first_name: telegramUser.first_name,
+          last_name: telegramUser.last_name,
+          language_code: telegramUser.language_code,
+          is_bot: false,
+        })
+      },
+      60,
+    )
+
+    if (!user) {
+      return {
+        authorized: false,
+        response: NextResponse.json({ error: "Failed to get user" }, { status: 500 }),
+      }
+    }
+
+    return {
+      authorized: true,
+      userId: user.id,
+      telegramId: user.telegram_id,
+      username: user.username,
+      firstName: user.first_name,
+    }
+  } catch (error) {
+    logger.error("miniapp-auth", "GET Authentication error", { error })
+    return {
+      authorized: false,
+      response: NextResponse.json({ error: "Authentication failed" }, { status: 500 }),
+    }
+  }
+}
+

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { requireDebugAuth } from "@/lib/security/debug-auth"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin-singleton"
 import { logger } from "@/lib/debug/logger"
 
 export async function DELETE(request: NextRequest) {
@@ -17,7 +17,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Missing giveaway ID" }, { status: 400 })
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     // First, delete related entries and results
     const { error: entriesError } = await supabase.from("giveaway_entries").delete().eq("giveaway_id", giveawayId)

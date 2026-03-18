@@ -61,7 +61,7 @@ const THEME_EMOJIS: Record<string, string> = {
 export default function ProfilePage() {
   const router = useRouter()
   const { user, isLoading } = useAuth()
-  const { user: tgUser } = useTelegramWebApp()
+  const { user: tgUser, initData } = useTelegramWebApp()
   const [profileData, setProfileData] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -101,7 +101,7 @@ export default function ProfilePage() {
 
   const fetchProfile = async () => {
     try {
-      const response = await fetch(`/api/miniapp/profile?userId=${user?.id}`, {
+      const response = await fetch(`/api/miniapp/profile?userId=${user?.id}&initData=${encodeURIComponent(initData || "")}`, {
         cache: "no-store",
         headers: {
           "Cache-Control": "no-cache",

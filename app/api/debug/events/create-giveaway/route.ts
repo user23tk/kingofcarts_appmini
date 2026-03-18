@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin-singleton"
 import { requireDebugAuth } from "@/lib/security/debug-auth"
 import { logger } from "@/lib/debug/logger"
 
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Missing required fields: theme_id, prize_title" }, { status: 400 })
         }
 
-        const supabase = await createClient()
+        const supabase = createAdminClient()
 
         const { data, error } = await supabase.rpc("create_event_giveaway", {
             p_theme_id: theme_id,

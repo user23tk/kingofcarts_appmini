@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin-singleton"
 import { requireDebugAuth, checkDebugRateLimit } from "@/lib/security/debug-auth"
 import { logger } from "@/lib/debug/logger"
 
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       return authCheck.response!
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const { data: users, error } = await supabase
       .from("users")

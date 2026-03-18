@@ -75,7 +75,7 @@ const fetcher = async (url: string) => {
 
 export default function LeaderboardPage() {
   const router = useRouter()
-  const { user, isLoading } = useAuth()
+  const { user, isLoading, initData } = useAuth()
   const [activeTab, setActiveTab] = useState<"general" | "event">("general")
 
   useBackButton(() => {
@@ -84,7 +84,7 @@ export default function LeaderboardPage() {
 
   // Fetch leaderboard anche senza user (per browser debug) - su Telegram userà l'userId per evidenziare posizione
   const leaderboardUrl = user?.id
-    ? `/api/miniapp/leaderboard?userId=${user.id}&limit=100`
+    ? `/api/miniapp/leaderboard?userId=${user.id}&limit=100&initData=${encodeURIComponent(initData || "")}`
     : `/api/miniapp/leaderboard?limit=100`
 
   const {
@@ -226,7 +226,7 @@ export default function LeaderboardPage() {
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-white">
-                        {leaderboardData?.rankings?.reduce((sum, p) => sum + (p.chaptersCompleted || 0), 0) || 0}
+                        {leaderboardData?.rankings?.reduce((sum: number, p: LeaderboardEntry) => sum + (p.chaptersCompleted || 0), 0) || 0}
                       </p>
                       <p className="text-xs text-gray-400">Capitoli Totali</p>
                     </div>
@@ -302,7 +302,7 @@ export default function LeaderboardPage() {
                     </div>
                   ) : (
                     <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                      {leaderboardData.rankings.map((entry, index) => (
+                      {leaderboardData.rankings.map((entry: LeaderboardEntry, index: number) => (
                         <motion.div
                           key={entry.oderId}
                           initial={{ opacity: 0, x: -20 }}
